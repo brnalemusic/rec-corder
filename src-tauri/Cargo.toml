@@ -1,6 +1,6 @@
 [package]
 name = "rec-corder"
-version = "0.1.3"
+version = "0.1.5"
 description = "Ultra-light screen recorder"
 authors = ["Breno"]
 edition = "2021"

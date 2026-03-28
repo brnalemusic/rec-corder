@@ -124,7 +124,7 @@ pub fn finish_splash(app: AppHandle) -> Result<(), String> {
 pub fn get_app_info(state: State<'_, AppState>) -> AppInfo {
     let config = state.config.lock();
     AppInfo {
-        version: "0.1.2".to_string(), // Sincronizado com tauri.conf.json
+        version: "0.1.5".to_string(), // Sincronizado com tauri.conf.json
         show_welcome: config.show_welcome_popup,
     }
 }
