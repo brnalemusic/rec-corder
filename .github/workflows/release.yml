@@ -34,5 +34,5 @@ jobs:
           tagName: v__VERSION__
           releaseName: "Rec Corder v__VERSION__"
           releaseBody: "Atualização automática para a v__VERSION__. Veja os ativos abaixo para baixar o instalador atualizado."
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false

@@ -53,7 +53,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENCRjA0MjMwNkE3OUJGNQpSV1QxbTZjR0l3Uy9ET0c3V0xiSzJNMUU3UWhiNmRKY0g2djhJcWNMVUhhRW5pWDlQOFVJa052Uwo=",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVFQzE4ODk5OTE1MjI4QTAKUldTZ0tGS1JtWWpCWGlkQTVoTWgxQVgyLy93MXlpeW85UFZSejQ0aTNleUxOYXpqSW4rdVZ0UVAK",
       "endpoints": [
         "https://github.com/brnalemusic/rec-corder/releases/latest/download/latest.json"
       ]
