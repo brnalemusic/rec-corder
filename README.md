@@ -13,7 +13,7 @@ Enquanto outros apps pesam centenas de MBs e consomem toda a sua CPU, o Rec Cord
 Não precisa saber programar para usar! 
 
 1. Acesse a aba [**Releases**](https://github.com/brnalemusic/rec-corder/releases) (lado direito deste repositório).
-2. Baixe o arquivo `Rec Corder_0.1.5_x64-setup.exe`.
+2. Baixe o arquivo `.exe` ou `.msi` mais recente (ignore extensões `.sig`).
 3. Execute o instalador.
 4. Se o Windows mostrar o aviso do SmartScreen, clique em **"Mais informações"** e depois em **"Executar assim mesmo"**.
 
