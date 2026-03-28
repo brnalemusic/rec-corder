@@ -26,3 +26,4 @@ dxdiag.txt
 *.sw?
 .env
 pubkey.txt
+GIT_WORKFLOW.md
