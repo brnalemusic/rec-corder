@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Rec Corder",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "identifier": "com.reccorder.app",
   "build": {
     "frontendDist": "../src"
@@ -41,6 +41,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "icon": [
       "icons/32x32.png",
@@ -49,5 +50,13 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENCRjA0MjMwNkE3OUJGNQpSV1QxbTZjR0l3Uy9ET0c3V0xiSzJNMUU3UWhiNmRKY0g2djhJcWNMVUhhRW5pWDlQOFVJa052Uwo=",
+      "endpoints": [
+        "https://github.com/brnalemusic/rec-corder/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

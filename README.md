@@ -1,17 +1,3 @@
-<div align="center">
-  <img src="src/assets/logo.png" width="128" height="128" alt="Rec Corder Logo">
-  <h1>Rec Corder — v0.1.2</h1>
-  <p><strong>Gravador de Tela Ultra-Leve com Aceleração por Hardware (Tauri + Rust + FFmpeg)</strong></p>
-  
-  <p>
-    <img src="https://img.shields.io/badge/Status-Pre--Alpha-orange?style=for-the-badge" alt="Status">
-    <img src="https://img.shields.io/badge/Platform-Windows-blue?style=for-the-badge&logo=windows" alt="Platform">
-    <img src="https://img.shields.io/badge/Open--Source-YES-green?style=for-the-badge" alt="Open Source">
-  </p>
-</div>
-
----
-
 ## 🎬 O que é o Rec Corder?
 
 O **Rec Corder** foi criado para ser o gravador de tela mais rápido e eficiente que você já usou. 
@@ -68,7 +54,7 @@ npm run tauri build
 
 ## 🤝 Contribuições
 
-Este projeto é **100% open-source**. Sinta-se livre para abrir Issues para relatar bugs ou Pull Requests com melhorias de código!
+Este projeto é **100% open-source**. Sinta-se livre em abrir Issues para relatar bugs ou Pull Requests com melhorias de código!
 
 ---
 

@@ -24,3 +24,5 @@ dxdiag.txt
 *.njsproj
 *.sln
 *.sw?
+.env
+pubkey.txt
