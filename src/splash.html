@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rec Corder - Testando Ambiente</title>
+  <link rel="stylesheet" href="styles/main.css" />
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #111111; /* Matching main.css dark theme */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      color: #ffffff;
+      font-family: system-ui, -apple-system, sans-serif;
+      text-align: center;
+      user-select: none;
+    }
+
+    .splash-logo {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 24px;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+
+    .splash-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .splash-subtitle {
+      font-size: 0.9rem;
+      color: #a0a0a0;
+      margin-bottom: 32px;
+    }
+
+    .spinner {
+      margin: 0 auto;
+      width: 32px;
+      height: 32px;
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      border-top-color: #e50914; /* Accent color matching your netflix/lume standard or red rec */
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <img src="assets/logo.png" alt="Rec Corder" class="splash-logo" />
+  <div class="splash-title">Rec Corder</div>
+  <div class="splash-subtitle" id="statusText">Testando ambiente...</div>
+  <div class="spinner"></div>
+
+  <script type="module" src="scripts/splash.js"></script>
+</body>
+</html>
