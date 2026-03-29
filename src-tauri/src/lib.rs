@@ -5,6 +5,7 @@ mod services;
 mod state;
 
 use commands::recorder::{self, SessionHandle};
+use commands::ffmpeg;
 use parking_lot::Mutex;
 use state::AppState;
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
@@ -65,6 +66,8 @@ pub fn run() {
             recorder::finish_splash,
             recorder::get_app_info,
             recorder::acknowledge_welcome,
+            ffmpeg::check_ffmpeg,
+            ffmpeg::download_ffmpeg,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

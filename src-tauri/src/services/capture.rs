@@ -74,8 +74,14 @@ pub struct CaptureSession {
 fn candidate_ffmpeg_paths() -> Vec<PathBuf> {
     let mut candidates = Vec::new();
 
+    // Primeira prioridade: variável de ambiente customizada
     if let Some(explicit_path) = std::env::var_os("REC_CORDER_FFMPEG_PATH") {
         candidates.push(PathBuf::from(explicit_path));
+    }
+
+    // Segunda prioridade: pasta de AppData do Rec Corder (instalação automática)
+    if let Some(local_app_data) = std::env::var_os("LOCALAPPDATA") {
+        candidates.push(PathBuf::from(local_app_data).join("RecCorder\\ffmpeg.exe"));
     }
 
     if let Ok(exe_path) = std::env::current_exe() {
@@ -146,7 +152,7 @@ fn resolve_ffmpeg_path() -> Result<PathBuf, RecorderError> {
     }
 
     Err(RecorderError::CaptureInit(format!(
-        "FFmpeg nao foi encontrado. Adicione-o ao PATH, defina REC_CORDER_FFMPEG_PATH ou coloque o binario em src-tauri/ffmpeg.exe. Locais verificados: {}",
+        "FFmpeg nao foi encontrado. Coloque-o em C:\\Users\\<nome_usuario>\\AppData\\Local\\RecCorder\\ffmpeg.exe ou adicione-o ao PATH. Você também pode definir REC_CORDER_FFMPEG_PATH. Locais verificados: {}",
         searched.join(" | ")
     )))
 }

@@ -4,13 +4,47 @@ async function bootstrap() {
   const statusText = document.getElementById('statusText');
 
   try {
+    // Verificar se FFmpeg está disponível
+    const ffmpegStatus = await invoke('check_ffmpeg');
+    
+    if (!ffmpegStatus.found) {
+      console.warn('FFmpeg não encontrado. Tentando baixar...');
+      statusText.style.color = '#ffaa00';
+      statusText.textContent = 'Verificando FFmpeg...';
+      
+      // Aguarda um pouco para o usuário ver a mensagem
+      await new Promise(r => setTimeout(r, 800));
+      
+      try {
+        statusText.textContent = 'Baixando FFmpeg (pode demorar)...';
+        const result = await invoke('download_ffmpeg');
+        console.log('FFmpeg baixado:', result);
+        statusText.style.color = '#00ff88';
+        statusText.textContent = 'FFmpeg instalado!';
+        await new Promise(r => setTimeout(r, 1200));
+      } catch (err) {
+        console.error('Erro ao baixar FFmpeg:', err);
+        statusText.style.color = '#ff4444';
+        statusText.textContent = 'Falha ao baixar FFmpeg';
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    } else {
+      console.log('FFmpeg encontrado em:', ffmpegStatus.path);
+      statusText.style.color = '#00aa88';
+      statusText.textContent = 'FFmpeg detectado ✓';
+      await new Promise(r => setTimeout(r, 600));
+    }
+
+    // Testar ambiente de encoding
+    statusText.style.color = '#ffaa00';
+    statusText.textContent = 'Detectando acelerador...';
     const encoder = await invoke('test_environment');
     console.log('Ambiente testado. Encoder:', encoder);
 
     statusText.style.color = '#00ff88';
     statusText.textContent = `Acelerador: ${encoder}`;
 
-    await new Promise(r => setTimeout(r, 600));
+    await new Promise(r => setTimeout(r, 800));
   } catch (err) {
     console.error('Falha na deteccao:', err);
     statusText.style.color = '#ffaa00';

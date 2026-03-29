@@ -124,7 +124,7 @@ pub fn finish_splash(app: AppHandle) -> Result<(), String> {
 pub fn get_app_info(state: State<'_, AppState>) -> AppInfo {
     let config = state.config.lock();
     AppInfo {
-        version: "0.1.5".to_string(), // Sincronizado com tauri.conf.json
+        version: "0.1.6".to_string(), // Sincronizado com tauri.conf.json
         show_welcome: config.show_welcome_popup,
     }
 }
@@ -238,7 +238,7 @@ pub fn get_output_dir(state: State<'_, AppState>) -> String {
 
 #[tauri::command]
 pub fn set_output_dir(state: State<'_, AppState>, path: String) -> Result<(), String> {
-    let p = std::path::PathBuf::from(&path);
+    let p = PathBuf::from(&path);
     if !p.exists() {
         std::fs::create_dir_all(&p).map_err(|e| format!("Erro ao criar diretorio: {e}"))?;
     }
