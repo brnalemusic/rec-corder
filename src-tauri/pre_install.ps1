@@ -1,4 +1,4 @@
-# Script executado durante a instalação do Rec Corder v0.2.0-alpha
+# Script executado durante a instalação do Rec Corder v0.2.0
 # Baixa e instala FFmpeg automaticamente no AppData do usuário
 
 $ErrorActionPreference = "Stop"
@@ -21,7 +21,7 @@ if (Test-Path $ffmpegPath) {
     exit 0
 }
 
-Write-Host "Instalando FFmpeg v0.2.0-alpha"
+Write-Host "Instalando FFmpeg v0.2.0"
 
 $ffmpegUrl = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
 $zipPath = Join-Path $recCorderPath "ffmpeg_download.zip"
