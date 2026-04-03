@@ -1,10 +1,13 @@
 {
   "name": "rec-corder",
   "private": true,
-  "version": "0.1.6",
+  "version": "0.2.0-alpha",
   "type": "module",
   "scripts": {
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "sync-version": "node scripts/sync-version.js",
+    "build:release": "npm run sync-version && npx tauri build",
+    "clean": "cd src-tauri && cargo clean"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2"

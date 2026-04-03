@@ -2,12 +2,18 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capabilities for the Rec Corder main window",
-  "windows": ["main"],
+  "windows": ["main", "settings", "splash"],
   "permissions": [
     "core:default",
     "opener:default",
     "dialog:default",
     "updater:default",
-    "process:allow-restart"
+    "process:allow-restart",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-unminimize",
+    "core:window:allow-set-focus",
+    "core:webview:allow-webview-show",
+    "core:webview:allow-webview-hide"
   ]
 }

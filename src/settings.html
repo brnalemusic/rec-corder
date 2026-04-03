@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Configurações - Rec Corder</title>
+  <link rel="stylesheet" href="styles/main.css" />
+  <link rel="stylesheet" href="styles/settings.css" />
+</head>
+
+<body>
+  <div class="settings-window">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar__brand">
+        <img src="assets/logo.png" alt="" class="sidebar__logo">
+      </div>
+      <nav class="sidebar__nav">
+        <button class="nav-btn nav-btn--active" data-tab="video">
+          <span class="nav-btn__icon">📹</span>
+          <span class="nav-btn__label">Vídeo</span>
+        </button>
+        <button class="nav-btn" data-tab="audio">
+          <span class="nav-btn__icon">🎵</span>
+          <span class="nav-btn__label">Áudio</span>
+        </button>
+        <button class="nav-btn" data-tab="output">
+          <span class="nav-btn__icon">💾</span>
+          <span class="nav-btn__label">Arquivos</span>
+        </button>
+      </nav>
+      
+      <div class="sidebar__footer">
+        <button class="btn btn--secondary btn--small" id="resetBtn">↺ Reset</button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="content">
+      <!-- Tab: Video -->
+      <div class="tab-content" id="tab-video">
+        <header class="content-header">
+          <h1 class="content-header__title">Vídeo</h1>
+          <p class="content-header__desc">Ajuste a qualidade e a área de captura.</p>
+        </header>
+
+        <div class="settings-grid">
+          <div class="card">
+            <label class="card__label">Monitor de Captura</label>
+            <div class="select-wrapper">
+              <select class="select select--full" id="monitorSelect">
+                <option value="0">Carregando...</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="card">
+            <label class="card__label">Taxa de Quadros (FPS)</label>
+            <div class="fps-grid">
+              <button class="fps-btn" data-fps="30">30</button>
+              <button class="fps-btn fps-btn--active" data-fps="60">60</button>
+              <button class="fps-btn" data-fps="120">120</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card__header">
+              <label class="card__label">Escala de Resolução</label>
+              <span class="badge" id="scaleValue">100%</span>
+            </div>
+            <div class="slider-container">
+              <input type="range" class="brutalist-slider" id="scaleSlider" min="50" max="100" value="100" step="5">
+              <div class="slider-marks">
+                <span>50%</span>
+                <span>100%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Audio -->
+      <div class="tab-content hidden" id="tab-audio">
+        <header class="content-header">
+          <h1 class="content-header__title">Áudio</h1>
+          <p class="content-header__desc">Fontes de entrada e volume.</p>
+        </header>
+
+        <div class="settings-grid">
+          <div class="card">
+            <label class="card__label">Microfone</label>
+            <div class="select-wrapper">
+              <select class="select select--full" id="micSelect">
+                <option value="">Nenhum</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="card">
+            <label class="card__label">Saída do Sistema</label>
+            <div class="select-wrapper">
+              <select class="select select--full" id="audioOutputSelect">
+                <option value="default">Padrão</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="card card--row">
+            <div>
+              <label class="card__label">Capturar Som do PC</label>
+              <p class="card__hint">Grava o áudio interno do sistema.</p>
+            </div>
+            <div class="brutalist-toggle" id="sysAudioToggle" role="switch" aria-checked="true" tabindex="0">
+              <div class="brutalist-toggle__knob"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card__header">
+              <label class="card__label">Volume do Mic</label>
+              <span class="badge" id="micVolumeValue">100%</span>
+            </div>
+            <div class="slider-container">
+              <input type="range" class="brutalist-slider" id="micVolumeSlider" min="0" max="150" value="100" step="5">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Output -->
+      <div class="tab-content hidden" id="tab-output">
+        <header class="content-header">
+          <h1 class="content-header__title">Arquivos</h1>
+          <p class="content-header__desc">Onde seus vídeos ganham vida.</p>
+        </header>
+
+        <div class="settings-grid">
+          <div class="card">
+            <label class="card__label">Pasta de Gravações</label>
+            <button class="brutalist-path" id="outputPath">
+              <span class="brutalist-path__icon">📁</span>
+              <span class="brutalist-path__text">Carregando...</span>
+            </button>
+            <p class="card__hint">Clique para alterar o local de salvamento.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Persistent Footer -->
+      <footer class="footer">
+        <div class="status">
+          <div class="status__dot" id="statusIndicator"></div>
+          <span class="status__text" id="statusMessage">Pronto</span>
+        </div>
+        <div class="actions">
+          <button class="btn btn--secondary" id="closeBtn">Cancelar</button>
+          <button class="btn btn--full-accent" id="saveBtn">Salvar Alterações</button>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <script type="module" src="scripts/settings.js"></script>
+</body>
+
+</html>

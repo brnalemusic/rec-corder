@@ -3,20 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Rec Corder v0.1.6 - Inicializando</title>
+  <title>Rec Corder - Inicializando</title>
   <link rel="stylesheet" href="styles/main.css" />
   <style>
     body {
       margin: 0;
       padding: 0;
-      background: #111111; /* Matching main.css dark theme */
+      background: #0B0D11; /* Matching main.css bg-primary */
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       height: 100vh;
-      color: #ffffff;
-      font-family: system-ui, -apple-system, sans-serif;
+      color: #F1F5F9; /* Matching main.css text-primary */
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
       text-align: center;
       user-select: none;
     }
@@ -25,50 +25,45 @@
       width: 64px;
       height: 64px;
       margin-bottom: 24px;
-      border-radius: 16px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      border-radius: 0px; /* Square design */
+      box-shadow: 4px 4px 0px rgba(0,0,0,1);
+      border: 2px solid #000;
     }
 
     .splash-title {
       font-size: 1.2rem;
-      font-weight: 600;
+      font-weight: 700;
       margin-bottom: 8px;
+      color: #FF6B00; /* accent-primary */
     }
 
     .splash-version {
       font-size: 0.75rem;
-      color: #888888;
+      color: #94A3B8; /* text-secondary */
       margin-bottom: 24px;
     }
 
     .splash-subtitle {
       font-size: 0.9rem;
-      color: #a0a0a0;
+      color: #94A3B8;
       margin-bottom: 32px;
       min-height: 1.2em;
     }
 
-    .spinner {
+    .splash-video-spinner {
       margin: 0 auto;
-      width: 32px;
-      height: 32px;
-      border: 3px solid rgba(255, 255, 255, 0.1);
-      border-radius: 50%;
-      border-top-color: #e50914;
-      animation: spin 1s ease-in-out infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+      width: 48px;
+      height: 48px;
+      object-fit: cover;
     }
   </style>
 </head>
 <body>
   <img src="assets/logo.png" alt="Rec Corder" class="splash-logo" />
   <div class="splash-title">Rec Corder</div>
-  <div class="splash-version">v0.1.6</div>
+  <div class="splash-version" id="splashVersion"></div>
   <div class="splash-subtitle" id="statusText">Inicializando...</div>
-  <div class="spinner"></div>
+  <video src="assets/loading_anim.mp4" class="splash-video-spinner" autoplay loop muted playsinline></video>
 
   <script type="module" src="scripts/splash.js"></script>
 </body>

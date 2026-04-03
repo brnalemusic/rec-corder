@@ -9,7 +9,7 @@ const { invoke } = window.__TAURI__.core;
 /**
  * @typedef {{ is_recording: boolean, elapsed_secs: number, output_file: string|null }} RecordingStatus
  * @typedef {{ file_path: string }} StartResult
- * @typedef {{ index: number, name: string }} MonitorInfo
+ * @typedef {{ index: number, name: string, is_primary: boolean }} MonitorInfo
  * @typedef {{ id: string, name: string, is_default: boolean }} MicInfo
  * @typedef {{ id: string, name: string, is_default: boolean }} AudioOutputInfo
  */
@@ -85,6 +85,16 @@ export async function setOutputDir(path) {
   return invoke('set_output_dir', { path });
 }
 
+/** Show the settings window. */
+export async function showSettings() {
+  return invoke('show_settings');
+}
+
+/** Hide the settings window without destroying the webview. */
+export async function hideSettings() {
+  return invoke('hide_settings');
+}
+
 /** Check for incomplete recordings from a crash. */
 export async function check_crash_recovery() {
   return invoke('check_crash_recovery');
@@ -99,3 +109,15 @@ export async function getAppInfo() {
 export async function acknowledgeWelcome() {
   return invoke('acknowledge_welcome');
 }
+
+/** Get the application version from Tauri. */
+export async function getAppVersion() {
+  try {
+    return await window.__TAURI__.app.getVersion();
+  } catch (e) {
+    console.warn('Failed to get version from Tauri API, falling back to backend:', e);
+    const info = await getAppInfo();
+    return info.version;
+  }
+}
+

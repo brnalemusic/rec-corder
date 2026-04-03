@@ -10,10 +10,11 @@ pub struct AppConfig {
     pub scale: u32,
     pub mic_enabled: bool,
     pub sys_audio_enabled: bool,
+    pub system_audio_enabled: bool, // Nova flag mais clara
     pub selected_monitor: usize,
     pub selected_mic: Option<String>,
     pub selected_audio_output: Option<String>,
-    pub show_welcome_popup: bool,
+    pub mic_volume: u32, // 0-150, padrão 100
 }
 
 impl Default for AppConfig {
@@ -28,10 +29,11 @@ impl Default for AppConfig {
             scale: 100,
             mic_enabled: false,
             sys_audio_enabled: true,
+            system_audio_enabled: true,
             selected_monitor: 0,
             selected_mic: None,
             selected_audio_output: None,
-            show_welcome_popup: true,
+            mic_volume: 100,
         }
     }
 }
@@ -58,16 +60,19 @@ impl AppConfig {
     pub fn save(&self) -> Result<(), String> {
         let path = Self::config_path();
         
+        // Garante que o diretório AppData\Local\RecCorder existe
         if let Some(parent) = path.parent() {
-            let _ = fs::create_dir_all(parent);
+            fs::create_dir_all(parent)
+                .map_err(|e| format!("Não foi possível criar o diretório de configuração em {:?}: {}", parent, e))?;
         }
 
         let content = serde_json::to_string_pretty(self)
-            .map_err(|e| format!("Erro ao serializar config: {e}"))?;
+            .map_err(|e| format!("Erro ao serializar configurações: {e}"))?;
             
         fs::write(&path, content)
-            .map_err(|e| format!("Erro ao salvar arquivo .cfg: {e}"))?;
+            .map_err(|e| format!("Erro ao gravar o arquivo {:?}: {}", path, e))?;
 
+        println!("Configurações persistidas em: {:?}", path);
         Ok(())
     }
 }

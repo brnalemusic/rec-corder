@@ -14,7 +14,7 @@
 
     <!-- Crash Recovery Banner -->
     <div class="crash-banner" id="crashBanner">
-      <span>⚠️</span>
+      <span>⚠️ Aviso</span>
       <span>Gravação anterior não foi finalizada corretamente.</span>
       <button class="crash-banner__dismiss" id="dismissCrash" aria-label="Fechar aviso">×</button>
     </div>
@@ -26,9 +26,11 @@
         <span class="header__title">Rec Corder</span>
       </div>
       <div class="header__version-container" tabindex="0">
-        <span class="header__version">v0.1.6</span>
+        <span class="header__version"></span>
         <div class="header__tooltip">
-          Esta é uma versão Release, porém pode ser instável em placas de vídeo que não sejam AMD, Intel ou NVIDIA.
+          Esta é uma versão Alpha e pode conter bugs e instabilidades. Já contém processamento de vídeo através da CPU
+          caso você não tenha uma Placa de Vídeo. Suporte nativo à AMD, Intel e NVIDIA. Agora utiliza WGC para captura
+          de tela e FFmpeg para pós-processamento.
         </div>
       </div>
     </header>
@@ -49,12 +51,13 @@
 
       <!-- Controls -->
       <div class="controls">
-        <button class="btn btn--record" id="btnRecord" aria-label="Iniciar gravação">
+        <button class="btn btn--record" id="btnRecord" aria-label="Iniciar gravação"
+          title="Clique para iniciar/parar gravação">
           <!-- Inner circle/square via CSS ::after -->
         </button>
         <div class="processing-indicator hidden" id="processingIndicator">
-           <div class="processing-indicator__spinner"></div>
-           <span class="processing-indicator__text">Processando...</span>
+          <video src="assets/loading_anim.mp4" class="video-spinner" autoplay loop muted playsinline></video>
+          <span class="processing-indicator__text" id="processingText">Processando...</span>
         </div>
       </div>
     </main>
@@ -96,147 +99,13 @@
         <div class="status-bar__dot status-bar__dot--idle" id="statusDot"></div>
         <span id="statusText">Idle</span>
       </div>
-      <button class="status-bar__btn" id="videoConfigBtn" aria-label="Configurações de vídeo">MP4 · H.264 · 60fps ·
-        100%</button>
+      <button class="status-bar__btn" id="videoConfigBtn" aria-label="Configurações de vídeo"
+        title="Clique para abrir configurações">MP4 · H.264 · 60fps · 100%</button>
     </footer>
 
-    <!-- Video Config Modal -->
-    <div class="modal-backdrop hidden" id="videoConfigModal">
-      <div class="modal">
-        <div class="modal__header">
-          <h2 class="modal__title">Configurações de Gravação</h2>
-          <button class="modal__close" id="closeVideoConfig" aria-label="Fechar">×</button>
-        </div>
-        <div class="modal__body">
-          <div class="config-group">
-            <h3 class="config-group__title">Qualidade e Desempenho</h3>
-            <p class="config-group__desc">Reduza o tamanho da imagem para ganhar desempenho em PCs modestos.</p>
-            <div class="config-options" id="scaleOptions">
-              <button class="config-btn config-btn--active" data-scale="100">
-                <span class="config-btn__name">Original</span>
-                <span class="config-btn__val">100%</span>
-              </button>
-              <button class="config-btn" data-scale="80">
-                <span class="config-btn__name">Equilibrado</span>
-                <span class="config-btn__val">80%</span>
-              </button>
-              <button class="config-btn" data-scale="60">
-                <span class="config-btn__name">Desempenho</span>
-                <span class="config-btn__val">60%</span>
-              </button>
-            </div>
-          </div>
-
-          <div class="config-group">
-            <h3 class="config-group__title">Taxa de Quadros (FPS)</h3>
-            <div class="config-options" id="fpsOptions">
-              <button class="config-btn" data-fps="30">
-                <span class="config-btn__name">Padrão</span>
-                <span class="config-btn__val">30 fps</span>
-              </button>
-              <button class="config-btn config-btn--active" data-fps="60">
-                <span class="config-btn__name">Fluido</span>
-                <span class="config-btn__val">60 fps</span>
-              </button>
-            </div>
-          </div>
-
-          <hr class="modal__divider" />
-
-          <!-- Configurações Avançadas -->
-          <div class="config-group">
-            <h3 class="config-group__title">Fontes e Destino</h3>
-
-            <!-- Monitor Selection -->
-            <div class="setting setting--modal">
-              <div class="setting__left">
-                <div class="setting__icon">🖥️</div>
-                <div>
-                  <div class="setting__label">Monitor</div>
-                </div>
-              </div>
-              <div class="select-wrapper">
-                <select class="select" id="monitorSelect">
-                  <option value="0">Carregando...</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Audio Output Select -->
-            <div class="setting setting--modal" id="audioOutputContainer">
-              <div class="setting__left">
-                <div class="setting__icon">🎧</div>
-                <div>
-                  <div class="setting__label">Saída de Áudio</div>
-                </div>
-              </div>
-              <div class="select-wrapper">
-                <select class="select" id="audioOutputSelect">
-                  <option value="default">Padrão</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Output Folder -->
-            <div class="setting setting--modal">
-              <div class="setting__left">
-                <div class="setting__icon">📁</div>
-                <div>
-                  <div class="setting__label">Pasta Destino</div>
-                </div>
-              </div>
-              <button class="path-btn" id="outputPath" title="Clique para mudar">
-                Carregando...
-              </button>
-            </div>
-
-          </div>
-        </div>
-        <div class="modal__footer">
-          <button class="btn btn--secondary btn--full-accent" id="saveVideoConfig">Pronto</button>
-        </div>
-      </div>
-      <!-- Welcome Modal (First Run) -->
-    <div class="modal-backdrop hidden" id="welcomeModal">
-      <div class="modal modal--welcome">
-        <div class="modal__header">
-          <h2 class="modal__title">Bem-vindo ao Rec Corder</h2>
-            <span class="modal__version-tag">v0.1.6</span>
-        </div>
-        <div class="modal__body">
-          <div class="welcome-content">
-            <p class="welcome-text">Obrigado por testar o Rec Corder! Esta é uma versão experimental focada em máxima performance.</p>
-            
-            <div class="alert-box alert-box--warning">
-              <span class="alert-box__icon">⚠️</span>
-              <div class="alert-box__content">
-                <strong>Aviso de Pós-Processamento</strong>
-                <p>Gravações longas ou com áudio do sistema podem demorar alguns segundos (ou minutos) para serem finalizadas após você clicar em parar. O app continuará funcionando, apenas aguarde a mensagem de "Salvo".</p>
-              </div>
-            </div>
-
-            <div class="alert-box alert-box--info">
-              <span class="alert-box__icon">🛠️</span>
-              <div class="alert-box__content">
-                <strong>Versão de Desenvolvimento</strong>
-                <p>Falhas ocasionais são normais nesta fase. Se o app fechar sozinho, ele tentará recuperar sua gravação na próxima inicialização.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="modal__footer">
-          <button class="btn btn--secondary btn--full-accent" id="closeWelcome">Entendi, vamos lá!</button>
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-  </div>
-
-  <script type="module" src="scripts/utils.js"></script>
-  <script type="module" src="scripts/recorder.js"></script>
-  <script type="module" src="scripts/app.js"></script>
+    <script type="module" src="scripts/utils.js"></script>
+    <script type="module" src="scripts/recorder.js"></script>
+    <script type="module" src="scripts/app.js"></script>
 </body>
 
 </html>

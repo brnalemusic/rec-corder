@@ -1,0 +1,416 @@
+/* ═══════════════════════════════════════════════════════
+   Rec Corder — New Brutalist Settings UI
+   "Beautiful Brutalism" — High contrast, stamped effects.
+   ═══════════════════════════════════════════════════════ */
+
+.settings-window {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  height: 100vh;
+  background: var(--bg-primary);
+  overflow: hidden;
+}
+
+/* ─── Sidebar ─── */
+.sidebar {
+  background: var(--bg-secondary);
+  border-right: 3px solid #000;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 8px;
+  gap: 24px;
+}
+
+.sidebar__brand {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #000;
+}
+
+.sidebar__logo {
+  width: 40px;
+  height: 40px;
+  filter: drop-shadow(2px 2px 0px #000);
+}
+
+.sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+.nav-btn {
+  background: transparent;
+  border: 2px solid transparent;
+  padding: 12px 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  transition: all var(--transition-fast);
+}
+
+.nav-btn__icon { font-size: 20px; }
+.nav-btn__label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+
+.nav-btn:hover { color: var(--text-primary); }
+
+.nav-btn--active {
+  background: var(--bg-card);
+  border: 2px solid #000;
+  color: var(--accent-primary);
+  box-shadow: 3px 3px 0px #000;
+  transform: translate(-2px, -2px);
+}
+
+.sidebar__footer {
+  padding-top: 12px;
+  border-top: 2px solid #000;
+}
+
+/* ─── Content Area ─── */
+.content {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: relative;
+}
+
+.tab-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 24px 100px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.content-header {
+  margin-bottom: 8px;
+}
+
+.content-header__title {
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+}
+
+.content-header__desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* ─── Settings Grid & Cards ─── */
+.settings-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 3px solid #000;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 4px 4px 0px #000;
+  transition: transform 0.1s ease;
+}
+
+.card--row {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card__label {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-primary);
+  text-transform: uppercase;
+}
+
+.card__hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+/* ─── Brutalist Components ─── */
+.badge {
+  background: #000;
+  color: var(--accent-primary);
+  padding: 4px 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--accent-primary);
+}
+
+.fps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.fps-btn {
+  background: var(--bg-elevated);
+  border: 2px solid #000;
+  padding: 10px;
+  color: var(--text-primary);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.fps-btn:hover { background: var(--bg-hover); }
+
+.fps-btn--active {
+  background: var(--accent-primary);
+  color: #000;
+  box-shadow: inset 3px 3px 0px rgba(0,0,0,0.3);
+}
+
+.select-wrapper {
+  position: relative;
+}
+
+.select-wrapper::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid var(--accent-primary);
+  border-bottom: 2px solid var(--accent-primary);
+  transform: translateY(-65%) rotate(45deg);
+  pointer-events: none;
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
+}
+
+.select-wrapper:focus-within::after,
+.select-wrapper:hover::after {
+  transform: translateY(-45%) rotate(45deg);
+  border-color: var(--accent-hover);
+}
+
+.select--full {
+  width: 100%;
+  min-height: 48px;
+  appearance: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0)) padding-box,
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)) border-box,
+    var(--bg-elevated);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  padding: 0 44px 0 14px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  outline: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 8px 20px rgba(0, 0, 0, 0.18);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.select--full:hover {
+  background-color: var(--bg-hover);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 24px rgba(0, 0, 0, 0.22);
+}
+
+.select--full:focus {
+  border-color: rgba(255, 127, 57, 0.8);
+  box-shadow:
+    0 0 0 3px rgba(255, 127, 57, 0.14),
+    0 12px 26px rgba(0, 0, 0, 0.26);
+}
+
+.select--full option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.slider-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.brutalist-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 12px;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, var(--accent-primary) 0%, var(--accent-hover) var(--value, 100%), rgba(255,255,255,0.08) var(--value, 100%), rgba(255,255,255,0.08) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  outline: none;
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.45),
+    0 8px 20px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+.brutalist-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 35%, #fff 0%, #fff 18%, var(--accent-hover) 20%, var(--accent-primary) 100%);
+  cursor: pointer;
+  border: 2px solid #0b0d12;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.35),
+    0 0 0 4px rgba(255, 127, 57, 0.16);
+}
+
+.brutalist-slider::-moz-range-track {
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.brutalist-slider::-moz-range-progress {
+  height: 12px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-hover));
+}
+
+.brutalist-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  border: 2px solid #0b0d12;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.35),
+    0 0 0 4px rgba(255, 127, 57, 0.16);
+}
+
+.brutalist-slider:hover,
+.brutalist-slider:focus-visible {
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.45),
+    0 0 0 3px rgba(255, 127, 57, 0.14),
+    0 10px 24px rgba(0, 0, 0, 0.24);
+}
+
+.slider-marks {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.brutalist-toggle {
+  width: 60px;
+  height: 32px;
+  background: #000;
+  border: 3px solid #000;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.brutalist-toggle--active { background: var(--accent-primary); }
+
+.brutalist-toggle__knob {
+  width: 24px;
+  height: 24px;
+  background: #fff;
+  border: 2px solid #000;
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  transition: transform 0.15s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.toggle--active .brutalist-toggle__knob { transform: translateX(28px); }
+
+.brutalist-path {
+  background: var(--bg-elevated);
+  border: 2px solid #000;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  width: 100%;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.brutalist-path:hover { border-color: var(--accent-primary); color: var(--text-primary); }
+
+/* ─── Footer & Status ─── */
+.footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg-secondary);
+  border-top: 3px solid #000;
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 10;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status__dot {
+  width: 12px;
+  height: 12px;
+  background: var(--success);
+  border: 2px solid #000;
+}
+
+.status__dot--loading { background: var(--accent-primary); }
+.status__dot--error { background: var(--rec-red); }
+
+.status__text {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.actions { display: flex; gap: 12px; }
+
+.btn--small { height: 32px; padding: 0 10px; font-size: 11px; }
+
+/* Utility */
+.hidden { display: none !important; }

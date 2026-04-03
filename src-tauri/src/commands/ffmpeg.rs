@@ -2,6 +2,9 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 use serde::Serialize;
+use std::os::windows::process::CommandExt;
+
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 #[derive(Serialize)]
 pub struct FfmpegStatus {
@@ -9,34 +12,58 @@ pub struct FfmpegStatus {
     pub path: Option<String>,
 }
 
-/// Verifica se o FFmpeg está disponível no sistema
+fn check_gfxcapture(ffmpeg_path: &PathBuf) -> bool {
+    let mut cmd = Command::new(ffmpeg_path);
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    cmd.args([
+        "-f", "lavfi",
+        "-i", "gfxcapture=list_sources=true",
+        "-vframes", "1",
+        "-f", "null",
+        "-"
+    ]);
+    if let Ok(output) = cmd.output() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        !stderr.contains("No such filter")
+    } else {
+        false
+    }
+}
+
+/// Verifica se o FFmpeg está disponível no sistema e possui o filtro gfxcapture
 #[tauri::command]
 pub fn check_ffmpeg() -> FfmpegStatus {
     let rec_corder_path = get_rec_corder_path();
     let ffmpeg_path = rec_corder_path.join("ffmpeg.exe");
     
     if ffmpeg_path.exists() {
-        return FfmpegStatus {
-            found: true,
-            path: Some(ffmpeg_path.to_string_lossy().to_string()),
-        };
+        if check_gfxcapture(&ffmpeg_path) {
+            return FfmpegStatus {
+                found: true,
+                path: Some(ffmpeg_path.to_string_lossy().to_string()),
+            };
+        } else {
+            println!("FFmpeg atual não suporta WGC (gfxcapture). Será baixada uma versão mais recente.");
+            let _ = fs::remove_file(&ffmpeg_path); // Tenta remover a versão antiga
+        }
     }
     
     // Tenta encontrar em outros locais
     if let Ok(output) = Command::new("where")
         .arg("ffmpeg.exe")
+        .creation_flags(CREATE_NO_WINDOW)
         .output()
     {
         if output.status.success() {
-            let path = String::from_utf8_lossy(&output.stdout)
-                .lines()
-                .next()
-                .map(|s| s.trim().to_string());
-            
-            return FfmpegStatus {
-                found: true,
-                path,
-            };
+            if let Some(path_str) = String::from_utf8_lossy(&output.stdout).lines().next() {
+                let p = PathBuf::from(path_str.trim());
+                if p.exists() && check_gfxcapture(&p) {
+                    return FfmpegStatus {
+                        found: true,
+                        path: Some(p.to_string_lossy().to_string()),
+                    };
+                }
+            }
         }
     }
     

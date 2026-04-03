@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use parking_lot::Mutex as ParkingMutex;
 use serde::Serialize;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager, State, Emitter};
 
 use crate::services::capture::{self, AudioOutputInfo, CaptureSession, MicInfo, MonitorInfo};
 use crate::services::watchdog;
@@ -34,7 +34,6 @@ pub struct StartResult {
 #[derive(Serialize)]
 pub struct AppInfo {
     pub version: String,
-    pub show_welcome: bool,
 }
 
 #[tauri::command]
@@ -73,18 +72,25 @@ pub fn get_config(state: State<'_, AppState>) -> crate::config::AppConfig {
 }
 
 #[tauri::command]
-pub fn update_config(state: State<'_, AppState>, config: crate::config::AppConfig) -> Result<(), String> {
-    let mut current = state.config.lock();
-    *current = config;
+pub fn update_config(app: AppHandle, state: State<'_, AppState>, config: crate::config::AppConfig) -> Result<(), String> {
+    {
+        let mut current = state.config.lock();
+        *current = config.clone();
+        
+        // Sync with legacy output_dir for stability
+        *state.output_dir.lock() = current.output_dir.clone();
+        
+        current.save()?;
+    }
     
-    // Sync with legacy output_dir for stability
-    *state.output_dir.lock() = current.output_dir.clone();
+    // Notificar todas as janelas sobre a mudança
+    let _ = app.emit("config-updated", config);
     
-    current.save()
+    Ok(())
 }
 
 #[tauri::command]
-pub fn test_environment(state: State<'_, AppState>) -> String {
+pub fn test_environment(app: AppHandle, state: State<'_, AppState>) -> String {
     // Check central config first
     {
         let cfg = state.config.lock();
@@ -98,14 +104,57 @@ pub fn test_environment(state: State<'_, AppState>) -> String {
     let encoder = capture::test_environment();
     
     // Update and persist
-    {
+    let config = {
         let mut cfg = state.config.lock();
         cfg.encoder = encoder.clone();
         let _ = cfg.save();
-    }
+        cfg.clone()
+    };
+    
+    // Notificar sobre a atualização do encoder
+    let _ = app.emit("config-updated", config);
     
     println!("Novo encoder detectado e salvo: {}", encoder);
     encoder
+}
+
+#[tauri::command]
+pub async fn show_settings(app: AppHandle) -> Result<(), String> {
+    if let Some(settings_window) = app.get_webview_window("settings") {
+        settings_window.show().map_err(|e| e.to_string())?;
+        settings_window.unminimize().map_err(|e| e.to_string())?;
+        settings_window.set_focus().map_err(|e| e.to_string())?;
+    } else {
+        // Se a janela foi fechada (destruída), precisamos criá-la novamente
+        let _ = tauri::WebviewWindowBuilder::new(
+            &app,
+            "settings",
+            tauri::WebviewUrl::App("settings.html".into()),
+        )
+        .title("Configurações - Rec Corder")
+        .inner_size(500.0, 650.0)
+        .min_inner_size(450.0, 550.0)
+        .resizable(true)
+        .decorations(true)
+        .center()
+        .build()
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn hide_settings(app: AppHandle) -> Result<(), String> {
+    if let Some(settings_window) = app.get_webview_window("settings") {
+        settings_window.hide().map_err(|e| e.to_string())?;
+    }
+
+    if let Some(main_window) = app.get_webview_window("main") {
+        let _ = main_window.unminimize();
+        let _ = main_window.set_focus();
+    }
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -121,19 +170,10 @@ pub fn finish_splash(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn get_app_info(state: State<'_, AppState>) -> AppInfo {
-    let config = state.config.lock();
+pub fn get_app_info() -> AppInfo {
     AppInfo {
-        version: "0.1.6".to_string(), // Sincronizado com tauri.conf.json
-        show_welcome: config.show_welcome_popup,
+        version: "0.2.0-alpha".to_string(), // Sincronizado com tauri.conf.json
     }
-}
-
-#[tauri::command]
-pub fn acknowledge_welcome(state: State<'_, AppState>) -> Result<(), String> {
-    let mut config = state.config.lock();
-    config.show_welcome_popup = false;
-    config.save()
 }
 
 #[tauri::command]
@@ -153,7 +193,9 @@ pub fn start_recording(
 
     let config = state.config.lock();
     
-    let monitor = monitor_index.unwrap_or(config.selected_monitor);
+    let requested_monitor = monitor_index.unwrap_or(config.selected_monitor);
+    let monitor = capture::resolve_monitor_index(requested_monitor)
+        .unwrap_or(requested_monitor);
     let configured_fps = fps.unwrap_or(config.fps);
     let scale = scale_factor.unwrap_or(config.scale);
     let timestamp = chrono::Local::now().format("%Y-%m-%d_%H-%M-%S");
@@ -237,17 +279,22 @@ pub fn get_output_dir(state: State<'_, AppState>) -> String {
 }
 
 #[tauri::command]
-pub fn set_output_dir(state: State<'_, AppState>, path: String) -> Result<(), String> {
+pub fn set_output_dir(app: AppHandle, state: State<'_, AppState>, path: String) -> Result<(), String> {
     let p = PathBuf::from(&path);
     if !p.exists() {
         std::fs::create_dir_all(&p).map_err(|e| format!("Erro ao criar diretorio: {e}"))?;
     }
-    {
+    let config = {
         let mut cfg = state.config.lock();
         cfg.output_dir = p.clone();
         let _ = cfg.save();
-    }
+        cfg.clone()
+    };
     *state.output_dir.lock() = p;
+    
+    // Notificar todas as janelas sobre a mudança na pasta (e config)
+    let _ = app.emit("config-updated", config);
+    
     Ok(())
 }
 

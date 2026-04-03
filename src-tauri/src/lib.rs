@@ -61,11 +61,12 @@ pub fn run() {
             recorder::list_audio_outputs,
             recorder::get_output_dir,
             recorder::set_output_dir,
+            recorder::show_settings,
+            recorder::hide_settings,
             recorder::check_crash_recovery,
             recorder::test_environment,
             recorder::finish_splash,
             recorder::get_app_info,
-            recorder::acknowledge_welcome,
             ffmpeg::check_ffmpeg,
             ffmpeg::download_ffmpeg,
         ])

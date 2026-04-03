@@ -3,17 +3,43 @@ use crate::services::audio::{
     self, AudioCaptureMode, AudioDeviceInfo, AudioTrack, NativeAudioCapture,
 };
 use serde::Serialize;
+use std::ffi::c_void;
 use std::fs::{self, File};
 use std::io::Write;
 use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
+#[cfg(target_os = "windows")]
+use std::sync::mpsc;
+#[cfg(target_os = "windows")]
+use std::thread::{self, JoinHandle};
 use std::time::Duration;
+#[cfg(target_os = "windows")]
+use windows::core::PCWSTR;
+#[cfg(target_os = "windows")]
+use windows::Win32::Foundation::{BOOL, COLORREF, HWND, LPARAM, RECT};
+#[cfg(target_os = "windows")]
+use windows::Win32::Graphics::Gdi::{
+    CreateRectRgn, EnumDisplayDevicesW, EnumDisplayMonitors, GetMonitorInfoW, HDC, HMONITOR,
+    MONITORINFOEXW, MonitorFromWindow, SetWindowRgn, DISPLAY_DEVICEW,
+    MONITOR_DEFAULTTONEAREST,
+};
+#[cfg(target_os = "windows")]
+use windows::Win32::System::Threading::GetCurrentThreadId;
+#[cfg(target_os = "windows")]
+use windows::Win32::UI::WindowsAndMessaging::{
+    CreateWindowExW, DispatchMessageW, GetMessageW, MSG, PostMessageW, PostThreadMessageW,
+    SetLayeredWindowAttributes, SetWindowPos, TranslateMessage, HWND_TOPMOST, LWA_ALPHA,
+    SWP_NOACTIVATE, SWP_SHOWWINDOW, WINDOW_EX_STYLE, WM_CLOSE, WM_QUIT, WS_EX_LAYERED,
+    WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
+    GetForegroundWindow, GetWindowRect, IsWindowVisible,
+};
 
 #[derive(Serialize)]
 pub struct MonitorInfo {
     pub index: usize,
     pub name: String,
+    pub is_primary: bool,
 }
 
 #[derive(Serialize)]
@@ -32,6 +58,12 @@ pub struct AudioOutputInfo {
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 const MIN_VALID_OUTPUT_BYTES: u64 = 4 * 1024;
+const STOP_POLL_INTERVAL_MS: u64 = 100;
+const STOP_MAX_WAIT_MS: u64 = 30_000;
+#[cfg(target_os = "windows")]
+const OVERLAY_ALPHA: u8 = 1;
+#[cfg(target_os = "windows")]
+const MONITORINFO_PRIMARY_FLAG: u32 = 1;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum EncoderStrategy {
@@ -67,8 +99,137 @@ pub struct CaptureSession {
     video_output_path: PathBuf,
     log_path: PathBuf,
     encoder_label: &'static str,
+    _capture_guard: Option<CaptureGuardWindow>,
     mic_capture: Option<NativeAudioCapture>,
     system_audio_capture: Option<NativeAudioCapture>,
+}
+
+#[cfg(target_os = "windows")]
+#[derive(Clone, Debug)]
+struct NativeMonitorInfo {
+    index: usize,
+    hmonitor: isize,
+    name: String,
+    bounds: RECT,
+    is_primary: bool,
+}
+
+#[cfg(target_os = "windows")]
+struct CaptureGuardWindow {
+    hwnd: isize,
+    thread_id: u32,
+    join_handle: Option<JoinHandle<()>>,
+}
+
+#[cfg(target_os = "windows")]
+impl Drop for CaptureGuardWindow {
+    fn drop(&mut self) {
+        unsafe {
+            let _ = PostMessageW(HWND(self.hwnd as *mut c_void), WM_CLOSE, None, None);
+            let _ = PostThreadMessageW(self.thread_id, WM_QUIT, None, None);
+        }
+
+        if let Some(join_handle) = self.join_handle.take() {
+            let _ = join_handle.join();
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+impl CaptureGuardWindow {
+    fn create(bounds: RECT) -> Result<Self, RecorderError> {
+        let (ready_tx, ready_rx) = mpsc::sync_channel(1);
+        let join_handle = thread::spawn(move || {
+            let class_name: Vec<u16> = "STATIC\0".encode_utf16().collect();
+            let width = (bounds.right - bounds.left).max(1);
+            let height = (bounds.bottom - bounds.top).max(1);
+
+            let result = unsafe {
+                let hwnd = CreateWindowExW(
+                    WINDOW_EX_STYLE(
+                        WS_EX_LAYERED.0
+                            | WS_EX_TOPMOST.0
+                            | WS_EX_TOOLWINDOW.0
+                            | WS_EX_NOACTIVATE.0,
+                    ),
+                    PCWSTR(class_name.as_ptr()),
+                    PCWSTR::null(),
+                    WS_POPUP,
+                    bounds.left,
+                    bounds.top,
+                    width,
+                    height,
+                    None,
+                    None,
+                    None,
+                    None,
+                );
+
+                match hwnd {
+                    Ok(hwnd) => {
+                        let _ = SetLayeredWindowAttributes(
+                            hwnd,
+                            COLORREF(0),
+                            OVERLAY_ALPHA,
+                            LWA_ALPHA,
+                        );
+                        let _ = SetWindowPos(
+                            hwnd,
+                            HWND_TOPMOST,
+                            bounds.left,
+                            bounds.top,
+                            width,
+                            height,
+                            SWP_NOACTIVATE | SWP_SHOWWINDOW,
+                        );
+
+                        let region = CreateRectRgn(0, 0, 1, 1);
+                        let _ = SetWindowRgn(hwnd, region, true);
+
+                        Ok((hwnd.0 as isize, GetCurrentThreadId()))
+                    }
+                    Err(_) => Err(()),
+                }
+            };
+
+            if ready_tx.send(result).is_err() {
+                return;
+            }
+
+            let mut msg = MSG::default();
+            loop {
+                let status = unsafe { GetMessageW(&mut msg, None, 0, 0) };
+                if status.0 == -1 || status.0 == 0 {
+                    break;
+                }
+
+                unsafe {
+                    let _ = TranslateMessage(&msg);
+                    DispatchMessageW(&msg);
+                }
+            }
+        });
+
+        let (hwnd, thread_id) = ready_rx
+            .recv()
+            .map_err(|_| {
+                RecorderError::CaptureInit(
+                    "Falha ao iniciar a janela de compatibilidade para captura fullscreen".into(),
+                )
+            })?
+            .map_err(|_| {
+                RecorderError::CaptureInit(
+                    "Nao foi possivel criar a janela de compatibilidade para captura fullscreen"
+                        .into(),
+                )
+            })?;
+
+        Ok(Self {
+            hwnd,
+            thread_id,
+            join_handle: Some(join_handle),
+        })
+    }
 }
 
 fn candidate_ffmpeg_paths() -> Vec<PathBuf> {
@@ -157,8 +318,203 @@ fn resolve_ffmpeg_path() -> Result<PathBuf, RecorderError> {
     )))
 }
 
-fn build_video_input(monitor_index: usize, fps: u32) -> String {
-    format!("ddagrab=output_idx={monitor_index}:framerate={fps}:draw_mouse=1")
+#[cfg(target_os = "windows")]
+fn find_fullscreen_window_on_monitor(monitor_bounds: RECT) -> Option<isize> {
+    unsafe {
+        let hwnd = GetForegroundWindow();
+        if hwnd.0.is_null() || !IsWindowVisible(hwnd).as_bool() {
+            return None;
+        }
+
+        let mut rect = RECT::default();
+        if GetWindowRect(hwnd, &mut rect).is_err() {
+            return None;
+        }
+
+        let hmonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        let mut info = MONITORINFOEXW::default();
+        info.monitorInfo.cbSize = std::mem::size_of::<MONITORINFOEXW>() as u32;
+        if !GetMonitorInfoW(hmonitor, &mut info as *mut _ as *mut _).as_bool() {
+            return None;
+        }
+
+        let m_bounds = info.monitorInfo.rcMonitor;
+        if m_bounds.left != monitor_bounds.left || m_bounds.top != monitor_bounds.top {
+            return None;
+        }
+
+        let width = rect.right - rect.left;
+        let height = rect.bottom - rect.top;
+        let m_width = monitor_bounds.right - monitor_bounds.left;
+        let m_height = monitor_bounds.bottom - monitor_bounds.top;
+
+        if width >= (m_width * 9 / 10) && height >= (m_height * 9 / 10) {
+            println!("Direct window capture enabled for potential fullscreen app (HWND: {:?})", hwnd.0);
+            return Some(hwnd.0 as isize);
+        }
+    }
+    None
+}
+
+fn build_video_input(
+    monitor_handle: Option<isize>,
+    monitor_index: usize,
+    window_handle: Option<isize>,
+    fps: u32,
+) -> String {
+    if let Some(hwnd) = window_handle {
+        format!("gfxcapture=window_handle={:#x}:max_framerate={fps}:capture_cursor=1", hwnd)
+    } else if let Some(hmonitor) = monitor_handle {
+        format!("gfxcapture=hmonitor={hmonitor}:max_framerate={fps}:capture_cursor=1")
+    } else {
+        format!("gfxcapture=monitor_idx={monitor_index}:max_framerate={fps}:capture_cursor=1")
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn parse_display_device_string(device: &[u16]) -> String {
+    let len = device.iter().position(|&value| value == 0).unwrap_or(device.len());
+    String::from_utf16_lossy(&device[..len]).trim().to_string()
+}
+
+#[cfg(target_os = "windows")]
+fn resolve_monitor_friendly_name(adapter_name: &str) -> Option<String> {
+    let adapter_name_wide: Vec<u16> = adapter_name.encode_utf16().chain(std::iter::once(0)).collect();
+    let mut device_index = 0;
+
+    loop {
+        let mut display_device = DISPLAY_DEVICEW::default();
+        display_device.cb = std::mem::size_of::<DISPLAY_DEVICEW>() as u32;
+
+        let result = unsafe {
+            EnumDisplayDevicesW(
+                PCWSTR(adapter_name_wide.as_ptr()),
+                device_index,
+                &mut display_device,
+                0,
+            )
+        };
+
+        if !result.as_bool() {
+            break;
+        }
+
+        let monitor_name = parse_display_device_string(&display_device.DeviceString);
+        if !monitor_name.is_empty()
+            && !monitor_name.eq_ignore_ascii_case("Generic PnP Monitor")
+        {
+            return Some(monitor_name);
+        }
+
+        if !monitor_name.is_empty() {
+            return Some(monitor_name);
+        }
+
+        device_index += 1;
+    }
+
+    None
+}
+
+#[cfg(target_os = "windows")]
+unsafe extern "system" fn monitor_enum_proc(
+    hmonitor: HMONITOR,
+    _: HDC,
+    _: *mut RECT,
+    lparam: LPARAM,
+) -> BOOL {
+    let monitors = &mut *(lparam.0 as *mut Vec<NativeMonitorInfo>);
+
+    let mut info = MONITORINFOEXW::default();
+    info.monitorInfo.cbSize = std::mem::size_of::<MONITORINFOEXW>() as u32;
+
+    if GetMonitorInfoW(hmonitor, &mut info as *mut _ as *mut _).as_bool() {
+        let device_name = parse_display_device_string(&info.szDevice);
+        let friendly_name = resolve_monitor_friendly_name(&device_name)
+            .filter(|name| !name.is_empty())
+            .unwrap_or_else(|| device_name.clone());
+        let bounds = info.monitorInfo.rcMonitor;
+        let width = bounds.right - bounds.left;
+        let height = bounds.bottom - bounds.top;
+        let is_primary = (info.monitorInfo.dwFlags & MONITORINFO_PRIMARY_FLAG) != 0;
+        let label = if is_primary {
+            format!("{friendly_name} (Principal) - {width}x{height}")
+        } else {
+            format!("{friendly_name} - {width}x{height}")
+        };
+
+        monitors.push(NativeMonitorInfo {
+            index: monitors.len(),
+            hmonitor: hmonitor.0 as isize,
+            name: label,
+            bounds,
+            is_primary,
+        });
+    }
+
+    BOOL(1)
+}
+
+#[cfg(target_os = "windows")]
+fn enumerate_native_monitors() -> Result<Vec<NativeMonitorInfo>, RecorderError> {
+    let mut monitors = Vec::new();
+
+    unsafe {
+        if !EnumDisplayMonitors(
+            HDC::default(),
+            None,
+            Some(monitor_enum_proc),
+            LPARAM((&mut monitors as *mut Vec<NativeMonitorInfo>) as isize),
+        )
+        .as_bool()
+        {
+            return Err(RecorderError::CaptureInit(
+                "Falha ao enumerar os monitores do Windows".into(),
+            ));
+        }
+    }
+
+    if monitors.is_empty() {
+        return Err(RecorderError::CaptureInit(
+            "Nenhum monitor ativo foi encontrado".into(),
+        ));
+    }
+
+    monitors.sort_by_key(|monitor: &NativeMonitorInfo| {
+        (!monitor.is_primary, monitor.bounds.left, monitor.bounds.top)
+    });
+    for (index, monitor) in monitors.iter_mut().enumerate() {
+        monitor.index = index;
+    }
+
+    Ok(monitors)
+}
+
+#[cfg(not(target_os = "windows"))]
+fn enumerate_native_monitors() -> Result<Vec<()>, RecorderError> {
+    Err(RecorderError::CaptureInit(
+        "A captura de tela so esta disponivel no Windows".into(),
+    ))
+}
+
+#[cfg(target_os = "windows")]
+pub fn resolve_monitor_index(preferred_index: usize) -> Result<usize, RecorderError> {
+    let monitors = enumerate_native_monitors()?;
+
+    if monitors.iter().any(|monitor| monitor.index == preferred_index) {
+        return Ok(preferred_index);
+    }
+
+    Ok(monitors
+        .iter()
+        .find(|monitor| monitor.is_primary)
+        .map(|monitor| monitor.index)
+        .unwrap_or(0))
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn resolve_monitor_index(preferred_index: usize) -> Result<usize, RecorderError> {
+    Ok(preferred_index)
 }
 
 fn build_log_path(output_path: &PathBuf) -> PathBuf {
@@ -210,29 +566,39 @@ fn cleanup_failed_attempt(output_path: &PathBuf, log_path: &PathBuf) {
     let _ = fs::remove_file(log_path);
 }
 
-fn append_common_inputs(cmd: &mut Command, monitor_index: usize, fps: u32) {
-    let video_input = build_video_input(monitor_index, fps);
+fn append_common_inputs(
+    cmd: &mut Command,
+    monitor_handle: Option<isize>,
+    monitor_index: usize,
+    window_handle: Option<isize>,
+    fps: u32,
+) {
+    let video_input = build_video_input(monitor_handle, monitor_index, window_handle, fps);
     cmd.args(["-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i"]);
     cmd.arg(video_input);
     cmd.args(["-map", "0:v:0"]);
 }
 
-fn append_encoder_args(cmd: &mut Command, strategy: EncoderStrategy, scale_factor: u32) {
-    let vf_amf = if scale_factor >= 100 {
-        "hwdownload,format=bgra,format=nv12".to_string()
-    } else {
-        let f = scale_factor as f32 / 100.0;
-        format!("hwdownload,format=bgra,scale=trunc(iw*{f}/2)*2:trunc(ih*{f}/2)*2,format=nv12")
-    };
-
-    let vf_x264 = if scale_factor >= 100 {
-        "hwdownload,format=bgra,format=yuv420p".to_string()
+fn build_capture_filter(scale_factor: u32, fps: u32, pixel_format: &str) -> String {
+    if scale_factor >= 100 {
+        format!("hwdownload,format=bgra,fps={fps},format={pixel_format}")
     } else {
         let f = scale_factor as f32 / 100.0;
         format!(
-            "hwdownload,format=bgra,scale=trunc(iw*{f}/2)*2:trunc(ih*{f}/2)*2,format=yuv420p"
+            "hwdownload,format=bgra,fps={fps},scale=trunc(iw*{f}/2)*2:trunc(ih*{f}/2)*2,format={pixel_format}"
         )
-    };
+    }
+}
+
+fn append_encoder_args(
+    cmd: &mut Command,
+    strategy: EncoderStrategy,
+    fps: u32,
+    scale_factor: u32,
+    enable_faststart: bool,
+) {
+    let vf_amf = build_capture_filter(scale_factor, fps, "nv12");
+    let vf_x264 = build_capture_filter(scale_factor, fps, "yuv420p");
 
     match strategy {
         EncoderStrategy::AmdAmf => {
@@ -251,8 +617,6 @@ fn append_encoder_args(cmd: &mut Command, strategy: EncoderStrategy, scale_facto
                 "5M",
                 "-pix_fmt",
                 "nv12",
-                "-movflags",
-                "+faststart",
             ]);
         }
         EncoderStrategy::NvidiaNvenc => {
@@ -271,8 +635,6 @@ fn append_encoder_args(cmd: &mut Command, strategy: EncoderStrategy, scale_facto
                 "23",
                 "-pix_fmt",
                 "yuv420p",
-                "-movflags",
-                "+faststart",
             ]);
         }
         EncoderStrategy::IntelQsv => {
@@ -287,8 +649,6 @@ fn append_encoder_args(cmd: &mut Command, strategy: EncoderStrategy, scale_facto
                 "23",
                 "-pix_fmt",
                 "nv12", // Intel QSV often likes nv12
-                "-movflags",
-                "+faststart",
             ]);
         }
         EncoderStrategy::SoftwareX264 => {
@@ -303,10 +663,12 @@ fn append_encoder_args(cmd: &mut Command, strategy: EncoderStrategy, scale_facto
                 "23",
                 "-pix_fmt",
                 "yuv420p",
-                "-movflags",
-                "+faststart",
             ]);
         }
+    }
+
+    if enable_faststart {
+        cmd.args(["-movflags", "+faststart"]);
     }
 }
 
@@ -448,14 +810,55 @@ impl CaptureSession {
             ))
         })?;
 
+        let (capture_guard, fullscreen_window, selected_hmonitor) = match enumerate_native_monitors() {
+            Ok(monitors) => {
+                let monitor = monitors.into_iter().find(|m| m.index == monitor_index);
+                let guard = monitor
+                    .as_ref()
+                    .map(|m| CaptureGuardWindow::create(m.bounds))
+                    .transpose();
+                let window = monitor
+                    .as_ref()
+                    .and_then(|m| find_fullscreen_window_on_monitor(m.bounds));
+                let hmonitor = monitor.as_ref().map(|m| m.hmonitor);
+                (guard, window, hmonitor)
+            }
+            Err(err) => {
+                println!(
+                    "Aviso: falha ao enumerar monitores para o modo fullscreen: {}",
+                    err
+                );
+                (Ok(None), None, None)
+            }
+        };
+
+        let capture_guard = capture_guard.map_err(|err| {
+            RecorderError::CaptureInit(format!(
+                "Falha ao preparar a compatibilidade com fullscreen para o monitor selecionado: {}",
+                err
+            ))
+        })?;
+
         let (mic_capture, system_audio_capture) =
             start_audio_captures(&final_output_path, mic_device_id, system_audio_device_id)?;
 
         let mut cmd = Command::new(ffmpeg_path);
         cmd.creation_flags(CREATE_NO_WINDOW);
 
-        append_common_inputs(&mut cmd, monitor_index, fps);
-        append_encoder_args(&mut cmd, strategy, scale_factor);
+        append_common_inputs(
+            &mut cmd,
+            selected_hmonitor,
+            monitor_index,
+            fullscreen_window,
+            fps,
+        );
+        append_encoder_args(
+            &mut cmd,
+            strategy,
+            fps,
+            scale_factor,
+            video_output_path == final_output_path,
+        );
 
         cmd.arg("-y");
         cmd.arg(video_output_path.to_string_lossy().to_string());
@@ -490,6 +893,7 @@ impl CaptureSession {
             video_output_path,
             log_path,
             encoder_label: strategy.label(),
+            _capture_guard: capture_guard,
             mic_capture,
             system_audio_capture,
         };
@@ -703,7 +1107,9 @@ impl CaptureSession {
             let _ = stdin.flush();
         }
 
-        for _ in 0..30 {
+        let attempts = (STOP_MAX_WAIT_MS / STOP_POLL_INTERVAL_MS) as usize;
+
+        for _ in 0..attempts {
             match self.process.try_wait() {
                 Ok(Some(status)) => {
                     if !status.success() {
@@ -742,7 +1148,7 @@ impl CaptureSession {
                     let _ = fs::remove_file(&self.log_path);
                     return Ok(());
                 }
-                Ok(None) => std::thread::sleep(Duration::from_millis(100)),
+                Ok(None) => std::thread::sleep(Duration::from_millis(STOP_POLL_INTERVAL_MS)),
                 Err(e) => {
                     return Err(RecorderError::CaptureRuntime(format!(
                         "Falha ao aguardar o encerramento do FFmpeg com {}: {}",
@@ -758,7 +1164,8 @@ impl CaptureSession {
 
         let log_tail = read_log_tail(&self.log_path);
         Err(RecorderError::CaptureRuntime(format!(
-            "FFmpeg precisou ser encerrado a forca e o MP4 pode ter ficado corrompido. Encoder: {}. {}",
+            "FFmpeg precisou ser encerrado a forca apos {} ms e o MP4 pode ter ficado corrompido. Encoder: {}. {}",
+            STOP_MAX_WAIT_MS,
             self.encoder_label,
             if log_tail.is_empty() {
                 format!("Consulte o log em {:?}", self.log_path)
@@ -770,16 +1177,26 @@ impl CaptureSession {
 }
 
 pub fn list_monitors() -> Result<Vec<MonitorInfo>, RecorderError> {
-    Ok(vec![
-        MonitorInfo {
-            index: 0,
-            name: "Monitor Principal (1)".to_string(),
-        },
-        MonitorInfo {
-            index: 1,
-            name: "Monitor Secundario (2)".to_string(),
-        },
-    ])
+    #[cfg(target_os = "windows")]
+    {
+        return enumerate_native_monitors().map(|monitors| {
+            monitors
+                .into_iter()
+                .map(|monitor| MonitorInfo {
+                    index: monitor.index,
+                    name: monitor.name,
+                    is_primary: monitor.is_primary,
+                })
+                .collect()
+        });
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        Err(RecorderError::CaptureInit(
+            "A captura de tela so esta disponivel no Windows".into(),
+        ))
+    }
 }
 
 pub fn list_mic_devices() -> Result<Vec<MicInfo>, RecorderError> {
@@ -851,4 +1268,33 @@ pub fn test_environment() -> String {
     
     println!("Hardware tests failed, falling back to libx264");
     EncoderStrategy::SoftwareX264.label().to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{build_capture_filter, build_video_input};
+
+    #[test]
+    fn build_video_input_uses_supported_gfxcapture_options() {
+        assert_eq!(
+            build_video_input(None, 0, None, 60),
+            "gfxcapture=monitor_idx=0:max_framerate=60:capture_cursor=1"
+        );
+        assert_eq!(
+            build_video_input(None, 0, Some(0x1234), 60),
+            "gfxcapture=window_handle=0x1234:max_framerate=60:capture_cursor=1"
+        );
+        assert_eq!(
+            build_video_input(Some(456), 0, None, 60),
+            "gfxcapture=hmonitor=456:max_framerate=60:capture_cursor=1"
+        );
+    }
+
+    #[test]
+    fn build_capture_filter_forces_constant_fps_before_encoding() {
+        assert_eq!(
+            build_capture_filter(100, 60, "nv12"),
+            "hwdownload,format=bgra,fps=60,format=nv12"
+        );
+    }
 }

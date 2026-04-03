@@ -2,6 +2,14 @@ const { invoke } = window.__TAURI__.core;
 
 async function bootstrap() {
   const statusText = document.getElementById('statusText');
+  const splashVersion = document.getElementById('splashVersion');
+
+  try {
+    const version = await window.__TAURI__.app.getVersion();
+    if (splashVersion) splashVersion.textContent = `v${version}`;
+  } catch (e) {
+    console.warn('Failed to get version for splash:', e);
+  }
 
   try {
     // Verificar se FFmpeg está disponível
