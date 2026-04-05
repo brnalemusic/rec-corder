@@ -1,0 +1,34 @@
+/* ─── Crash Recovery Banner ─── */
+.crash-banner {
+  display: none;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #FF9F5A, #FFA800);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  animation: slideDown 0.3s var(--transition-normal);
+}
+
+.crash-banner--visible {
+  display: flex;
+}
+
+.crash-banner__dismiss {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 700;
+  opacity: 0.7;
+  transition: opacity var(--transition-fast);
+}
+
+.crash-banner__dismiss:hover {
+  opacity: 1;
+}
+

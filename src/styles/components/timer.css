@@ -1,0 +1,109 @@
+/* ─── Timer Display ─── */
+.timer {
+  text-align: center;
+  animation: fadeInScale 0.5s var(--transition-normal);
+}
+
+.timer__time {
+  font-family: var(--font-mono);
+  font-size: 56px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+  line-height: 1;
+  background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.timer__time--recording {
+  background: linear-gradient(135deg, var(--rec-red), var(--rec-red-hover));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.timer__label {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 12px;
+  font-weight: 600;
+  transition: color var(--transition-fast);
+}
+
+/* ─── Recording Indicator ─── */
+.rec-indicator {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: var(--rec-red-dim);
+  border: 1px solid var(--rec-red);
+  border-radius: var(--radius-md);
+  margin-bottom: -8px;
+  animation: slideDown 0.3s var(--transition-normal);
+}
+
+.rec-indicator--active {
+  display: flex;
+}
+
+.rec-indicator__dot {
+  width: 8px;
+  height: 8px;
+  background: var(--rec-red);
+  border-radius: 50%;
+  animation: pulse-dot 1.2s ease-in-out infinite;
+  box-shadow: 0 0 10px var(--rec-red);
+}
+
+.rec-indicator__text {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--rec-red);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { 
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.4;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes slideDown {
+  from { 
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+

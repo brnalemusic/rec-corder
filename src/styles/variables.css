@@ -1,0 +1,65 @@
+/* ═══════════════════════════════════════════════════════
+   Rec Corder — Modern Design System
+   ═══════════════════════════════════════════════════════ */
+
+/* ─── Google Fonts ─── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap');
+
+/* ─── Design Tokens ─── */
+:root {
+  /* Surface colors — refined dark palette */
+  --bg-primary: #0F1117;
+  --bg-secondary: #161B22;
+  --bg-card: #1C2128;
+  --bg-elevated: #262D36;
+  --bg-hover: #30363D;
+
+  /* Accent – vibrant modern orange */
+  --accent-primary: #FF7F39;
+  --accent-hover: #FF9566;
+  --accent-active: #E87530;
+  --accent-glow: rgba(255, 127, 57, 0.2);
+  --accent-subtle: rgba(255, 127, 57, 0.1);
+
+  /* Recording red – vibrant */
+  --rec-red: #E74C3C;
+  --rec-red-hover: #EC6B57;
+  --rec-red-glow: rgba(231, 76, 60, 0.3);
+  --rec-red-dim: rgba(231, 76, 60, 0.12);
+
+  /* Success green */
+  --success: #3FB950;
+  --success-dim: rgba(63, 185, 80, 0.15);
+
+  /* Text */
+  --text-primary: #F0F6FC;
+  --text-secondary: #8B949E;
+  --text-muted: #6E7681;
+
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --border-soft: rgba(255, 255, 255, 0.08);
+  --border-active: rgba(255, 127, 57, 0.5);
+
+  /* Shadows – soft, modern */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.6);
+
+  /* Radius – elegant curves */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* Transitions – smooth and snappy */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', monospace;
+}
+

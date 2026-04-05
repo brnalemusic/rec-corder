@@ -1,3 +1,4 @@
+# --- General/Useful ---
 # Logs
 logs
 *.log
@@ -7,23 +8,41 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-# Rust and Tauri Specifics
+# Node/Frontend
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+
+# --- Tauri & Rust Specifics ---
 /src-tauri/target/
 /src-tauri/gen/
-dxdiag.txt
+/src-tauri/tauri.log
 
-# Editor directories and files
+# Sidecars & Binaries (Specifically FFmpeg and zip)
+/src-tauri/ffmpeg.exe
+/src-tauri/ffmpeg.zip
+/src-tauri/bin/
+
+# --- Project Specific ---
+scripts/
+version.txt
+dxdiag.txt
+pubkey.txt
+GIT_WORKFLOW.md
+
+# --- Editor & OS Specific ---
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
+Thumbs.db
+desktop.ini
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-.env
-pubkey.txt
-GIT_WORKFLOW.md
+*.bak
+*.tmp
