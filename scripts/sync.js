@@ -9,12 +9,20 @@ const rootDir = path.resolve(__dirname, '..');
 
 function readVersion() {
   const versionPath = path.join(rootDir, 'version.txt');
-  if (!fs.existsSync(versionPath)) {
-    console.error('version.txt not found at root.');
-    process.exit(1);
+  if (fs.existsSync(versionPath)) {
+    return fs.readFileSync(versionPath, 'utf8').trim();
   }
 
-  return fs.readFileSync(versionPath, 'utf8').trim();
+  const pkgPath = path.join(rootDir, 'package.json');
+  if (fs.existsSync(pkgPath)) {
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+    if (pkg.version) {
+      return pkg.version;
+    }
+  }
+
+  console.error('version.txt not found at root, and package.json has no version.');
+  process.exit(1);
 }
 
 function updateFile(file, transform) {
