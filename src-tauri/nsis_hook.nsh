@@ -1,4 +1,4 @@
-; Hook customizado para Tauri NSIS - Rec Corder v0.2.0
+; Hook customizado para Tauri NSIS - Rec Corder v0.2.1
 ; Este arquivo é incluído automaticamente no script NSIS gerado pelo Tauri
 
 !macro customInstall

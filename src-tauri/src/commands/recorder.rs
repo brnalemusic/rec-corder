@@ -172,7 +172,7 @@ pub fn finish_splash(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 pub fn get_app_info() -> AppInfo {
     AppInfo {
-        version: "0.2.0".to_string(), // Sincronizado com tauri.conf.json
+        version: "0.2.1".to_string(), // Sincronizado com tauri.conf.json
     }
 }
 
