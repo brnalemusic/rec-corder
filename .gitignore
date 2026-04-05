@@ -20,10 +20,9 @@ dist/
 /src-tauri/gen/
 /src-tauri/tauri.log
 
-# Sidecars & Binaries (Specifically FFmpeg and zip)
+# Sidecars
 /src-tauri/ffmpeg.exe
 /src-tauri/ffmpeg.zip
-/src-tauri/bin/
 
 # --- Project Specific ---
 scripts/*
