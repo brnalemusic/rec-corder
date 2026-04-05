@@ -68,7 +68,6 @@ pub fn run() {
             recorder::finish_splash,
             recorder::get_app_info,
             ffmpeg::check_ffmpeg,
-            ffmpeg::download_ffmpeg,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

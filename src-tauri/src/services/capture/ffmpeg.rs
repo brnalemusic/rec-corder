@@ -48,12 +48,15 @@ pub fn candidate_ffmpeg_paths() -> Vec<PathBuf> {
 
     if let Ok(exe_path) = std::env::current_exe() {
         if let Some(exe_dir) = exe_path.parent() {
+            candidates.push(exe_dir.join("ffmpeg-x86_64-pc-windows-msvc.exe")); // Sidecar embutido
             candidates.push(exe_dir.join("ffmpeg.exe"));
 
             if let Some(target_dir) = exe_dir.parent() {
+                candidates.push(target_dir.join("ffmpeg-x86_64-pc-windows-msvc.exe"));
                 candidates.push(target_dir.join("ffmpeg.exe"));
 
                 if let Some(project_dir) = target_dir.parent() {
+                    candidates.push(project_dir.join("bin").join("ffmpeg-x86_64-pc-windows-msvc.exe"));
                     candidates.push(project_dir.join("ffmpeg.exe"));
                 }
             }

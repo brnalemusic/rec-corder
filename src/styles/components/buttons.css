@@ -153,3 +153,11 @@
   box-shadow: var(--shadow-sm);
 }
 
+.btn--small {
+  height: 36px;
+  padding: 0 10px;
+  font-size: 11px;
+  border-radius: var(--radius-sm);
+  gap: 6px;
+}
+

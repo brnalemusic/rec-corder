@@ -1,28 +1,19 @@
-; Hook customizado para Tauri NSIS - Rec Corder v0.2.1
-; Este arquivo é incluído automaticamente no script NSIS gerado pelo Tauri
+; Hook customizado para o instalador NSIS do Tauri 2.
+; O arquivo e referenciado em bundle.windows.nsis.installerHooks.
+; A versao abaixo e mantida em sincronia por scripts/sync.js usando version.txt.
 
-!macro customInstall
-  ; Executar script PowerShell de pré-instalação de FFmpeg
-  DetailPrint "Preparando dependências (FFmpeg)..."
-  
-  ; Obter caminho do script
-  StrCpy $0 "$INSTDIR\..\..\..\src-tauri\pre_install.ps1"
-  
-  ; Executar PowerShell com ExecutionPolicy Bypass
-  ExecWait 'powershell.exe -ExecutionPolicy Bypass -NoProfile -File "$0"' $1
-  
-  ${If} $1 = 0
-    DetailPrint "Dependências instaladas com sucesso"
-  ${Else}
-    DetailPrint "Aviso: Erro ao instalar dependências (código: $1)"
-  ${EndIf}
+!macro NSIS_HOOK_PREINSTALL
+  DetailPrint "Preparando a instalacao do Rec Corder v0.2.6"
 !macroend
 
-!macro customUnInstall
-  ; Remover FFmpeg quando desinstalar (opcional)
-  ; Descomentar se desejar limpar FFmpeg da desinstalação
-  ; StrCpy $0 "$LOCALAPPDATA\RecCorder\ffmpeg.exe"
-  ; ${If} ${FileExists} "$0"
-  ;   Delete "$0"
-  ; ${EndIf}
+!macro NSIS_HOOK_POSTINSTALL
+  DetailPrint "Rec Corder instalado com sucesso."
+!macroend
+
+!macro NSIS_HOOK_PREUNINSTALL
+  DetailPrint "Removendo o Rec Corder..."
+!macroend
+
+!macro NSIS_HOOK_POSTUNINSTALL
+  DetailPrint "Rec Corder removido."
 !macroend

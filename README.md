@@ -1,4 +1,4 @@
-# 🎬 Rec Corder — Gravador de Tela Ultra-Leve e Otimizado para Windows
+# 🎬 Rec Corder — Gravador de Tela Ultra-Otimizado e de Alta Performance para Windows
 
 O **Rec Corder** foi desenvolvido para ser o gravador de tela mais "invisível" que você já usou. 
 
@@ -9,7 +9,7 @@ Enquanto gravadores tradicionais consomem sua CPU e podem causar engasgos (stutt
 ### ✨ O que o torna especial? (Lado Humano)
 
 - **Prioridade ao Usuário:** O Rec Corder é "egoísta" com o hardware — no bom sentido. Ele consome o mínimo de CPU e RAM durante a gravação para que seu jogo ou software pesado rode liso.
-- **Processamento Transparente:** Quando você clica em "Parar", o app entra no estado de **Processando...**. É nesse momento que ele combina o vídeo capturado com o áudio cristalino. Esse pequeno intervalo ao final é o "segredo" por trás da leveza durante a gravação.
+- **Processamento Transparente:** Quando você clica em "Parar", o app entra no estado de **Processando...**. É nesse momento que ele combina o vídeo capturado com o áudio cristalino. Esse pequeno intervalo ao final é o "segredo" por trás da performance extrema durante a gravação.
 - **Zero Lag Real:** Nada de interfaces pesadas. Tudo aqui foi escrito em Vanilla JS e Rust (Tauri) para abrir instantaneamente e responder ao seu clique sem pensar duas vezes.
 - **Segurança de Dados:** Se o seu PC desligar ou o Windows travar, o Rec Corder possui um **Watchdog (Cão de Guarda)** que tenta recuperar sua gravação na próxima vez que o app for aberto.
 
@@ -30,8 +30,8 @@ Enquanto gravadores tradicionais consomem sua CPU e podem causar engasgos (stutt
 Não precisa saber programar para usar! Siga estes passos simples:
 
 1. Acesse a aba [**Releases**](https://github.com/brnalemusic/rec-corder/releases) (lado direito deste repositório).
-2. Baixe o arquivo `.exe` ou `.msi` mais recente.
-3. Execute o instalador. Ele baixará automaticamente os componentes necessários (como o FFmpeg) para você.
+2. Baixe o arquivo `.exe` mais recente.
+3. Execute o instalador. Ele configurará automaticamente todos os componentes necessários para você.
 4. Se o Windows mostrar o aviso do SmartScreen, clique em **"Mais informações"** e depois em **"Executar assim mesmo"**.
 
 ---
@@ -51,6 +51,6 @@ O Rec Corder é construído com tecnologia de ponta para Windows:
 Este projeto é **100% open-source**. Se você encontrar um bug ou tiver uma ideia de recurso, abra uma **Issue** ou envie um **Pull Request**.
 
 <div align="center">
-  <sub>Criado com 🧡 para a comunidade criativa. v0.2.1</sub>
+  <sub>Criado com 🧡 para a comunidade criativa. v0.2.6</sub>
 </div>
 

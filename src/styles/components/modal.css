@@ -152,7 +152,8 @@
 }
 
 .btn--full-accent {
-  width: 100%;
+  padding: 0 24px;
+  min-width: 120px;
   background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
   color: white;
   height: 44px;

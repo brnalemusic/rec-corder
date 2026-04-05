@@ -26,7 +26,11 @@ dist/
 /src-tauri/bin/
 
 # --- Project Specific ---
-scripts/
+scripts/*
+!scripts/
+!scripts/sync.js
+!scripts/generate-installer-assets.js
+!scripts/generate-installer-assets.ps1
 version.txt
 dxdiag.txt
 pubkey.txt
