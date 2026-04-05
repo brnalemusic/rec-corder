@@ -19,6 +19,10 @@ let sysAudioEnabled = true;
 let selectedAudioOutput = null;
 let selectedMicId = null;
 
+// Updater state
+let downloadTotal = 0;
+let downloadedBytes = 0;
+
 function resolveSelectedMonitor(monitors) {
   if (!Array.isArray(monitors) || monitors.length === 0) {
     return 0;
@@ -175,6 +179,16 @@ async function init() {
 
   bindEvents();
   updateUI();
+
+  // Check for updates after app fully loaded
+  try {
+    const updateVersion = await recorder.checkForUpdates();
+    if (updateVersion) {
+      showUpdateModal(updateVersion);
+    }
+  } catch (e) {
+    console.error('Failed to check for updates:', e);
+  }
 }
 
 function bindEvents() {
@@ -476,5 +490,73 @@ async function handleChangeOutputDir() {
     }
   } catch (error) {
     console.error('Folder pick error:', error);
+  }
+}
+
+// --- Updater ---
+
+function showUpdateModal(version) {
+  if (!dom.updateModal) return;
+  
+  if (dom.updateVersionText) {
+    dom.updateVersionText.textContent = `A versão ${version} está disponível. Deseja baixar agora?`;
+  }
+  
+  dom.updateModal.classList.remove('hidden');
+  
+  dom.btnUpdateCancel?.addEventListener('click', hideUpdateModal, { once: true });
+  dom.btnUpdateNow?.addEventListener('click', startUpdate, { once: true });
+}
+
+function hideUpdateModal() {
+  if (dom.updateModal) {
+    dom.updateModal.classList.add('hidden');
+  }
+}
+
+async function startUpdate() {
+  if (dom.updateActions) dom.updateActions.classList.add('hidden');
+  if (dom.updateProgressContainer) dom.updateProgressContainer.classList.remove('hidden');
+  if (dom.updateProgressText) dom.updateProgressText.textContent = 'Baixando: 0%';
+  if (dom.updateProgressBar) dom.updateProgressBar.value = 0;
+  
+  downloadedBytes = 0;
+  
+  const { listen } = window.__TAURI__.event;
+  
+  try {
+    await listen('update-progress', (event) => {
+      const payload = event.payload;
+      const chunk = payload.chunk;
+      downloadTotal = payload.total || downloadTotal;
+      
+      downloadedBytes += chunk;
+      
+      if (downloadTotal > 0 && dom.updateProgressBar) {
+        const percent = Math.round((downloadedBytes / downloadTotal) * 100);
+        dom.updateProgressBar.value = percent;
+        if (dom.updateProgressText) {
+          dom.updateProgressText.textContent = `Baixando: ${percent}%`;
+        }
+      }
+    });
+    
+    await listen('update-finished', () => {
+      if (dom.updateProgressText) {
+        dom.updateProgressText.textContent = 'Instalando... O app será reiniciado.';
+      }
+    });
+
+    await recorder.installUpdate();
+
+  } catch (e) {
+    console.error('Update failed:', e);
+    if (dom.updateActions) dom.updateActions.classList.remove('hidden');
+    if (dom.updateProgressContainer) dom.updateProgressContainer.classList.add('hidden');
+    if (dom.updateVersionText) dom.updateVersionText.textContent = `Erro ao atualizar: ${e}`;
+    
+    // allow retry or cancel
+    dom.btnUpdateCancel?.addEventListener('click', hideUpdateModal, { once: true });
+    dom.btnUpdateNow?.addEventListener('click', startUpdate, { once: true });
   }
 }

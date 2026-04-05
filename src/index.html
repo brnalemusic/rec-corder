@@ -111,6 +111,24 @@
         title="Clique para abrir configurações">MP4 · H.264 · 60fps · 100%</button>
     </footer>
 
+    <!-- Update Modal -->
+    <div id="updateModal" class="update-modal hidden">
+      <div class="update-modal__content">
+        <h2 class="update-modal__title">Atualização Disponível</h2>
+        <p class="update-modal__text" id="updateVersionText">Uma nova versão está disponível. Deseja baixar agora?</p>
+        
+        <div id="updateProgressContainer" class="update-modal__progress-container hidden">
+          <p class="update-modal__progress-text" id="updateProgressText">Baixando: 0%</p>
+          <progress id="updateProgressBar" class="update-modal__progress-bar" value="0" max="100"></progress>
+        </div>
+
+        <div class="update-modal__actions" id="updateActions">
+          <button class="btn btn--secondary" id="btnUpdateCancel">Agora não</button>
+          <button class="btn btn--primary" id="btnUpdateNow">Atualizar</button>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="scripts/utils.js"></script>
     <script type="module" src="scripts/recorder.js"></script>
     <script type="module" src="scripts/app.js"></script>

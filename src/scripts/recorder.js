@@ -121,3 +121,13 @@ export async function getAppVersion() {
   }
 }
 
+
+/** Check for updates via backend (returns version string or null). */
+export async function checkForUpdates() {
+  return invoke('check_for_updates');
+}
+
+/** Install the pending update (handled by backend). */
+export async function installUpdate() {
+  return invoke('install_update');
+}
