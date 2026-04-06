@@ -85,7 +85,7 @@ function syncTextTargets(version) {
   syncCargoLockVersion(version);
 
   updateFile('src-tauri/nsis_hook.nsh', (content) =>
-    content.replace(/Rec Corder v[0-9.-a-z]+/gi, `Rec Corder v${version}`)
+    content.replace(/Rec Corder v[^"]+/gi, `Rec Corder v${version}`)
   );
 
   updateFile('README.md', (content) =>
