@@ -3191,13 +3191,14 @@ checksum = "20675572f6f24e9e76ef639bc5552774ed45f1c30e2951e1e99c59888861c539"
 
 [[package]]
 name = "rec-corder"
-version = "0.2.71"
+version = "0.2.8"
 dependencies = [
  "chrono",
  "dirs-next",
  "parking_lot",
  "regex",
  "reqwest 0.11.27",
+ "semver",
  "serde",
  "serde_json",
  "tauri",
@@ -3677,9 +3678,9 @@ dependencies = [
 
 [[package]]
 name = "semver"
-version = "1.0.27"
+version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d767eb0aabc880b29956c35734170f26ed551a859dbd361d140cdbeca61ab1e2"
+checksum = "8a7852d02fc848982e0c167ef163aaff9cd91dc640ba85e263cb1ce46fae51cd"
 dependencies = [
  "serde",
  "serde_core",

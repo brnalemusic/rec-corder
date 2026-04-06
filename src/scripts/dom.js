@@ -18,14 +18,6 @@ export const dom = {
   audioOutputContainer: $('audioOutputContainer'),
   processingIndicator: $('processingIndicator'),
   processingText: $('processingText'),
-  updateModal: $('updateModal'),
-  updateVersionText: $('updateVersionText'),
-  updateProgressContainer: $('updateProgressContainer'),
-  updateProgressText: $('updateProgressText'),
-  updateProgressBar: $('updateProgressBar'),
-  updateActions: $('updateActions'),
-  btnUpdateCancel: $('btnUpdateCancel'),
-  btnUpdateNow: $('btnUpdateNow'),
 };
 
 export function setupSecurity() {

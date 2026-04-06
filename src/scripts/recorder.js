@@ -127,6 +127,11 @@ export async function checkForUpdates() {
   return invoke('check_for_updates');
 }
 
+/** Show the updater window. */
+export async function showUpdater(version, body = null) {
+  return invoke('show_updater', { version, body });
+}
+
 /** Install the pending update (handled by backend). */
 export async function installUpdate() {
   return invoke('install_update');

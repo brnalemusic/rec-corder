@@ -1,6 +1,4 @@
-use std::fs;
 use std::path::PathBuf;
-use std::process::Command;
 
 fn main() {
     // Verificar se FFmpeg já existe no bundle

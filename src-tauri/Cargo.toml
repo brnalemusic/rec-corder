@@ -1,6 +1,6 @@
 [package]
 name = "rec-corder"
-version = "0.2.71"
+version = "0.2.8"
 description = "Ultra-light screen recorder"
 authors = ["Breno"]
 edition = "2021"
@@ -39,6 +39,7 @@ windows = { version = "0.58", features = [
   "Win32_UI_WindowsAndMessaging",
   "Win32_UI_Shell_PropertiesSystem",
 ] }
+semver = "1.0.28"
 
 [profile.release]
 opt-level = 3
