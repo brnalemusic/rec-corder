@@ -1,50 +1,45 @@
 /* ─── Timer Display ─── */
 .timer {
   text-align: center;
-  animation: fadeInScale 0.5s var(--transition-normal);
+  animation: fadeInScale 0.4s var(--transition-normal);
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4));
 }
 
 .timer__time {
   font-family: var(--font-mono);
-  font-size: 56px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  font-size: 64px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   color: var(--text-primary);
   line-height: 1;
-  background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  text-shadow: 0 0 20px rgba(255, 117, 31, 0.05); /* Very subtle warm reflection */
 }
 
 .timer__time--recording {
-  background: linear-gradient(135deg, var(--rec-red), var(--rec-red-hover));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: pulse 2s ease-in-out infinite;
+  color: var(--rec-red);
+  text-shadow: 0 0 20px rgba(255, 59, 48, 0.15);
 }
 
 .timer__label {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
+  margin-top: 16px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-top: 12px;
-  font-weight: 600;
-  transition: color var(--transition-fast);
 }
 
 /* ─── Recording Indicator ─── */
 .rec-indicator {
   display: none;
   align-items: center;
-  gap: 10px;
-  padding: 8px 16px;
+  gap: 8px;
+  padding: 6px 14px;
   background: var(--rec-red-dim);
-  border: 1px solid var(--rec-red);
-  border-radius: var(--radius-md);
-  margin-bottom: -8px;
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid rgba(255, 59, 48, 0.2);
+  border-radius: 20px;
+  margin-bottom: -4px;
   animation: slideDown 0.3s var(--transition-normal);
 }
 
@@ -57,53 +52,28 @@
   height: 8px;
   background: var(--rec-red);
   border-radius: 50%;
-  animation: pulse-dot 1.2s ease-in-out infinite;
-  box-shadow: 0 0 10px var(--rec-red);
+  box-shadow: 0 0 8px var(--rec-red);
+  animation: pulse-dot 2s ease-in-out infinite;
 }
 
 .rec-indicator__text {
   font-size: 11px;
   font-weight: 700;
   color: var(--rec-red);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
 }
 
 @keyframes pulse-dot {
-  0%, 100% { 
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% { 
-    opacity: 0.4;
-    transform: scale(1.2);
-  }
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.1); }
 }
 
 @keyframes slideDown {
-  from { 
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to { 
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes fadeInScale {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
 }
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-

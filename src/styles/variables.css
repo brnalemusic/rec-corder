@@ -1,65 +1,65 @@
 /* ═══════════════════════════════════════════════════════
-   Rec Corder — Modern Design System
+   Rec Corder — Glass & Fire System
    ═══════════════════════════════════════════════════════ */
 
-/* ─── Google Fonts ─── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap');
+/* ─── Web Fonts ─── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 /* ─── Design Tokens ─── */
 :root {
-  /* Surface colors — refined dark palette */
-  --bg-primary: #0F1117;
-  --bg-secondary: #161B22;
-  --bg-card: #1C2128;
-  --bg-elevated: #262D36;
-  --bg-hover: #30363D;
+  /* Deep Blue Surfaces — Using transparency for LEAN glassmorphism */
+  --bg-primary: #0a0e14;
+  --bg-secondary: rgba(22, 27, 34, 0.7);
+  --bg-card: rgba(30, 35, 45, 0.6);
+  --bg-elevated: rgba(45, 52, 64, 0.5);
+  --bg-hover: rgba(60, 70, 85, 0.4);
+  
+  /* Backdrop Blur Intensity */
+  --glass-blur: blur(12px);
 
-  /* Accent – vibrant modern orange */
-  --accent-primary: #FF7F39;
-  --accent-hover: #FF9566;
-  --accent-active: #E87530;
-  --accent-glow: rgba(255, 127, 57, 0.2);
-  --accent-subtle: rgba(255, 127, 57, 0.1);
+  /* Primary Accent – User specified Orange #ff751f */
+  --accent-primary: #ff751f;
+  --accent-hover: #ff8c42;
+  --accent-active: #e66200;
+  --accent-subtle: rgba(255, 117, 31, 0.12);
 
-  /* Recording red – vibrant */
-  --rec-red: #E74C3C;
-  --rec-red-hover: #EC6B57;
-  --rec-red-glow: rgba(231, 76, 60, 0.3);
-  --rec-red-dim: rgba(231, 76, 60, 0.12);
+  /* Recording red – camera solid red */
+  --rec-red: #ff3b30;
+  --rec-red-hover: #d70015;
+  --rec-red-dim: rgba(255, 59, 48, 0.15);
 
   /* Success green */
-  --success: #3FB950;
-  --success-dim: rgba(63, 185, 80, 0.15);
+  --success: #34c759;
+  --success-dim: rgba(52, 199, 89, 0.15);
 
-  /* Text */
-  --text-primary: #F0F6FC;
-  --text-secondary: #8B949E;
-  --text-muted: #6E7681;
+  /* Text — slightly blue-tinted white for harmony */
+  --text-primary: #f0f4f8;
+  --text-secondary: #a0aec0;
+  --text-muted: #718096;
 
-  /* Borders */
-  --border-subtle: rgba(255, 255, 255, 0.1);
-  --border-soft: rgba(255, 255, 255, 0.08);
-  --border-active: rgba(255, 127, 57, 0.5);
+  /* Borders - crispy blue-tinted borders */
+  --border-subtle: rgba(160, 174, 192, 0.1);
+  --border-soft: rgba(160, 174, 192, 0.06);
+  --border-active: rgba(255, 117, 31, 0.5);
 
-  /* Shadows – soft, modern */
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
-  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.6);
+  /* Shadows – deep and natural */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.6);
 
-  /* Radius – elegant curves */
-  --radius-sm: 6px;
+  /* Radius — Elegant and professional */
+  --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
 
-  /* Transitions – smooth and snappy */
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+  /* Transitions */
+  --transition-fast: 150ms ease-out;
+  --transition-normal: 250ms ease-out;
+  --transition-slow: 400ms ease-out;
 
-  /* Typography */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Cascadia Code', monospace;
+  /* Typography - System Native UI */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, monospace;
 }
-

@@ -2,13 +2,13 @@
 .crash-banner {
   display: none;
   padding: 14px 20px;
-  background: linear-gradient(135deg, #FF9F5A, #FFA800);
+  background: var(--accent-primary);
   color: #fff;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   align-items: center;
-  gap: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  gap: 12px;
+  border-bottom: 1px solid var(--border-soft);
   animation: slideDown 0.3s var(--transition-normal);
 }
 
@@ -22,13 +22,12 @@
   border: none;
   color: #fff;
   cursor: pointer;
-  font-size: 18px;
-  font-weight: 700;
-  opacity: 0.7;
+  font-size: 20px;
+  line-height: 1;
+  opacity: 0.8;
   transition: opacity var(--transition-fast);
 }
 
 .crash-banner__dismiss:hover {
   opacity: 1;
 }
-

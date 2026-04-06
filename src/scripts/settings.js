@@ -323,7 +323,7 @@ async function saveConfig() {
       selected_mic: elements.micSelect.value || null,
       selected_audio_output: elements.audioOutputSelect.value,
       system_audio_enabled: sysAudioEnabled,
-      mic_enabled: !!elements.micSelect.value,
+      mic_enabled: elements.micSelect.value ? state.config.mic_enabled : false,
       sys_audio_enabled: sysAudioEnabled,
       mic_volume: parseInt(elements.micVolumeSlider.value),
     };

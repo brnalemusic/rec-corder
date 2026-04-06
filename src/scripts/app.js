@@ -418,10 +418,9 @@ async function handleMicToggle() {
   }
 
   if (micEnabled) {
-    await loadMics();
-  } else {
-    selectedMicId = null;
-    if (dom.micName) dom.micName.textContent = 'Desativado';
+    if (!selectedMicId) {
+      await loadMics();
+    }
   }
   await syncPrefs();
 }
@@ -430,23 +429,19 @@ async function loadMics() {
   try {
     const mics = await recorder.listMics();
     if (mics.length > 0) {
-      const defaultMic = mics.find((mic) => mic.is_default) ?? mics[0];
-      selectedMicId = defaultMic.id;
-      if (dom.micName) {
-        dom.micName.textContent = defaultMic.is_default
-          ? `${defaultMic.name} (Padrao)`
-          : defaultMic.name;
+      const exists = selectedMicId && mics.some(m => m.id === selectedMicId);
+      if (!exists) {
+        const defaultMic = mics.find((mic) => mic.is_default) ?? mics[0];
+        selectedMicId = defaultMic.id;
       }
       return;
     }
 
     selectedMicId = null;
-    if (dom.micName) dom.micName.textContent = 'Nenhum mic encontrado';
     micEnabled = false;
     dom.micToggle?.classList.remove('toggle--active');
   } catch (error) {
     selectedMicId = null;
-    if (dom.micName) dom.micName.textContent = 'Erro: ' + String(error);
   }
 }
 

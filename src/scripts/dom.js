@@ -7,7 +7,6 @@ export const dom = {
   recIndicator: $('recIndicator'),
   monitorSelect: $('monitorSelect'),
   micToggle: $('micToggle'),
-  micName: $('micName'),
   outputPath: $('outputPath'),
   statusDot: $('statusDot'),
   statusText: $('statusText'),

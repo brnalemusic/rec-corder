@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 20px;
+  gap: 24px;
   width: 100%;
 }
 
@@ -12,35 +12,35 @@
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  animation: fadeInScale 0.3s var(--transition-normal);
+  animation: fade-in 0.3s var(--transition-normal);
   padding: 12px;
 }
 
 .video-spinner {
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
   object-fit: cover;
   border-radius: var(--radius-md);
   background: var(--bg-elevated);
   padding: 2px;
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .processing-indicator__text {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--accent-primary);
-  letter-spacing: 0.02em;
+  text-shadow: 0 0 8px var(--accent-subtle);
   animation: pulse-text 2s ease-in-out infinite;
 }
 
 @keyframes pulse-text {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+  50% { opacity: 0.5; }
 }
 
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -51,113 +51,95 @@
   border: none;
   cursor: pointer;
   font-family: var(--font-sans);
-  font-weight: 700;
+  font-weight: 500;
   transition: all var(--transition-fast);
   outline: none;
 }
 
-/* Record button */
+/* Record button - Solid Physical Camera Button with Orange Accent */
 .btn--record {
   width: 80px;
   height: 80px;
-  border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, var(--rec-red), var(--rec-red-hover));
+  border-radius: 50%;
+  background: var(--rec-red);
   color: white;
-  font-size: 24px;
-  box-shadow: var(--shadow-lg);
-  border: none;
+  box-shadow: var(--shadow-lg), inset 0 2px 4px rgba(255, 255, 255, 0.2);
+  border: 5px solid var(--bg-primary);
+  outline: 2px solid rgba(255, 255, 255, 0.05);
   position: relative;
-  overflow: hidden;
-  transition: all var(--transition-normal);
-}
-
-.btn--record::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left var(--transition-normal);
+  transition: all var(--transition-fast);
 }
 
 .btn--record:hover:not(.btn--record--recording) {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-xl);
-  background: linear-gradient(135deg, var(--rec-red-hover), var(--rec-red));
-}
-
-.btn--record:hover::before {
-  left: 100%;
+  transform: scale(1.04);
+  background: var(--rec-red-hover);
+  box-shadow: 0 0 20px rgba(255, 59, 48, 0.2), inset 0 2px 4px rgba(255, 255, 255, 0.3);
 }
 
 .btn--record:active:not(.btn--record--recording) {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  transform: scale(0.96);
+  box-shadow: none;
 }
 
+/* Inner white shape */
 .btn--record::after {
   content: '';
   position: absolute;
-  width: 28px;
-  height: 28px;
-  background: white;
+  width: 24px;
+  height: 24px;
+  background: #ffffff;
   border-radius: 4px;
   transition: all var(--transition-normal);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Stop state — Using brand orange for the stop symbol border/glow */
+.btn--record--recording {
+  background: var(--bg-elevated);
+  border-color: var(--bg-secondary);
+  outline-color: rgba(255, 117, 31, 0.1);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4), 0 0 12px rgba(255, 117, 31, 0.05);
 }
 
 .btn--record--recording::after {
-  width: 22px;
-  height: 22px;
-  border-radius: 2px;
+  background: var(--accent-primary); /* Use orange for the stop square */
+  box-shadow: 0 0 8px rgba(255, 117, 31, 0.4);
 }
 
-.btn--record--recording {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  color: var(--rec-red);
-}
-
-.btn--record--recording:hover {
-  background: var(--bg-hover);
-  border-color: var(--rec-red);
-  box-shadow: var(--shadow-md), inset 0 0 20px rgba(231, 76, 60, 0.1);
+.btn--record--recording:hover::after {
+  transform: scale(1.1);
+  background: var(--accent-hover);
 }
 
 /* Secondary buttons */
 .btn--secondary {
-  height: 44px;
-  padding: 0 20px;
+  height: 42px;
+  padding: 0 18px;
   border-radius: var(--radius-md);
-  background: var(--bg-elevated);
-  color: var(--text-secondary);
+  background: var(--bg-card);
+  backdrop-filter: var(--glass-blur);
+  color: var(--text-primary);
   font-size: 13px;
   gap: 8px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-soft);
   box-shadow: var(--shadow-sm);
-  transition: all var(--transition-fast);
 }
 
 .btn--secondary:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
+  background: var(--bg-elevated);
   border-color: var(--accent-primary);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+  color: var(--accent-primary);
+  transform: translateY(-1px);
 }
 
 .btn--secondary:active {
   transform: translateY(0);
-  box-shadow: var(--shadow-sm);
 }
 
 .btn--small {
-  height: 36px;
-  padding: 0 10px;
-  font-size: 11px;
+  height: 34px;
+  padding: 0 14px;
+  font-size: 12px;
   border-radius: var(--radius-sm);
   gap: 6px;
 }
-

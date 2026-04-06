@@ -9,6 +9,7 @@ use commands::ffmpeg;
 use parking_lot::Mutex;
 use state::AppState;
 use commands::updater::{self, PendingUpdate};
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -23,6 +24,16 @@ pub fn run() {
         .manage(AppState::new())
         .manage::<SessionHandle>(Mutex::new(None))
         .manage(PendingUpdate(Mutex::new(None)))
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() == "main" {
+                    window.app_handle().exit(0);
+                } else if window.label() == "settings" {
+                    let _ = window.hide();
+                    api.prevent_close();
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             recorder::get_config,
             recorder::update_config,

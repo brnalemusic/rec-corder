@@ -3,11 +3,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 20px;
+  padding: 10px 20px;
   background: var(--bg-secondary);
-  border-top: 1px solid var(--border-subtle);
+  backdrop-filter: var(--glass-blur);
+  border-top: 1px solid var(--border-soft);
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
+  z-index: 5;
 }
 
 .status-bar__left {
@@ -21,17 +23,12 @@
   height: 8px;
   background: var(--success);
   border-radius: 50%;
-  animation: pulse-status 2s ease-in-out infinite;
+  box-shadow: 0 0 8px rgba(52, 199, 89, 0.3);
 }
 
 .status-bar__dot--idle {
   background: var(--text-muted);
-  animation: none;
-}
-
-@keyframes pulse-status {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  box-shadow: none;
 }
 
 .status-bar__btn {
@@ -41,14 +38,13 @@
   font-family: var(--font-mono);
   font-size: 11px;
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 4px 10px;
   border-radius: var(--radius-sm);
   transition: all var(--transition-fast);
 }
 
 .status-bar__btn:hover {
-  background: var(--bg-elevated);
+  background: var(--bg-hover);
   color: var(--accent-primary);
-  border-color: var(--accent-primary);
+  border-color: rgba(255, 117, 31, 0.2);
 }
-
