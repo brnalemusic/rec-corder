@@ -23,7 +23,14 @@
 
     <!-- Crash Recovery Banner -->
     <div class="crash-banner" id="crashBanner">
-      <span>⚠️ Aviso</span>
+      <span class="crash-banner__icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+          <path d="M12 9v4" />
+          <path d="M12 17h.01" />
+        </svg>
+      </span>
       <span>Gravação anterior não foi finalizada corretamente.</span>
       <button class="crash-banner__dismiss" id="dismissCrash" aria-label="Fechar aviso">×</button>
     </div>
@@ -37,8 +44,7 @@
       <div class="header__version-container" tabindex="0">
         <span class="header__version"></span>
         <div class="header__tooltip">
-          Esta é uma versão estável do Rec Corder, mas não significa que erros e bugs possam ocorrer. Se encontrar
-          algum, por favor, reporte para o desenvolvedor através do repositório oficial no GitHub da aplicação.
+          Você está utilizando uma versão estável do Rec Corder. Se encontrar erros, reporte no GitHub.
         </div>
       </div>
     </header>
@@ -75,7 +81,14 @@
       <!-- Microphone Toggle -->
       <div class="setting">
         <div class="setting__left">
-          <div class="setting__icon">🎤</div>
+          <div class="setting__icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+              <line x1="12" x2="12" y1="19" y2="22" />
+            </svg>
+          </div>
           <div class="setting__label">Microfone</div>
         </div>
         <div class="toggle" id="micToggle" role="switch" aria-checked="false" tabindex="0">
@@ -86,7 +99,14 @@
       <!-- System Audio Toggle -->
       <div class="setting">
         <div class="setting__left">
-          <div class="setting__icon">🔊</div>
+          <div class="setting__icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+            </svg>
+          </div>
           <div class="setting__label">Áudio do Sistema</div>
         </div>
         <div class="toggle toggle--active" id="sysAudioToggle" role="switch" aria-checked="true" tabindex="0">

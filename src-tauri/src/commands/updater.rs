@@ -20,8 +20,10 @@ pub async fn check_for_updates(
             let parsed_current = semver::Version::parse(&current_version);
 
             if let (Ok(u_ver), Ok(c_ver)) = (parsed_update, parsed_current) {
+                // Em produção (release), impede downgrades.
+                // Em desenvolvimento (debug), permite ver a tela mesmo na mesma versão para testes.
+                #[cfg(not(debug_assertions))]
                 if u_ver <= c_ver {
-                    // Previne downgrades e updates fantasma na mesma versão
                     return Ok(None);
                 }
             }

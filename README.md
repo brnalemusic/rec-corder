@@ -51,5 +51,5 @@ O Rec Corder é construído com tecnologia de ponta para Windows:
 Este projeto é **100% open-source**. Se você encontrar um bug ou tiver uma ideia de recurso, abra uma **Issue** ou envie um **Pull Request**.
 
 <div align="center">
-  <sub>Criado com 🧡 para a comunidade criativa. v0.2.8</sub>
+  <sub>Criado com 🧡 para a comunidade criativa. v0.2.11</sub>
 </div>

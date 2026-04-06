@@ -16,6 +16,14 @@
   display: flex;
 }
 
+.crash-banner__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.95);
+}
+
 .crash-banner__dismiss {
   margin-left: auto;
   background: none;

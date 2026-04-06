@@ -48,6 +48,35 @@
   flex-shrink: 0;
   color: var(--text-secondary);
   transition: all var(--transition-fast);
+  position: relative;
+  overflow: hidden;
+}
+
+.setting__icon::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: var(--rec-red);
+  transform: translate(-50%, -50%) rotate(-45deg);
+  transition: width var(--transition-normal) ease;
+  border-radius: 1px;
+  opacity: 0;
+  z-index: 2;
+  box-shadow: 0 0 4px rgba(255, 59, 48, 0.4);
+}
+
+.setting--disabled .setting__icon::after {
+  width: 28px;
+  opacity: 1;
+}
+
+.setting--disabled .setting__icon svg {
+  opacity: 0.35;
+  filter: grayscale(1);
+  transition: all var(--transition-normal);
 }
 
 .setting:hover .setting__icon {

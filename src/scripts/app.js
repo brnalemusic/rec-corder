@@ -83,10 +83,12 @@ async function init() {
       if (dom.micToggle) {
         dom.micToggle.classList.toggle('toggle--active', micEnabled);
         dom.micToggle.setAttribute('aria-checked', micEnabled);
+        dom.micToggle.closest('.setting')?.classList.toggle('setting--disabled', !micEnabled);
       }
       if (dom.sysAudioToggle) {
         dom.sysAudioToggle.classList.toggle('toggle--active', sysAudioEnabled);
         dom.sysAudioToggle.setAttribute('aria-checked', sysAudioEnabled);
+        dom.sysAudioToggle.closest('.setting')?.classList.toggle('setting--disabled', !sysAudioEnabled);
       }
       if (dom.videoConfigBtn) {
         dom.videoConfigBtn.textContent = `MP4 · H.264 · ${currentFps}fps · ${currentScale}%`;
@@ -150,11 +152,13 @@ async function init() {
   if (dom.micToggle) {
     dom.micToggle.classList.toggle('toggle--active', micEnabled);
     dom.micToggle.setAttribute('aria-checked', micEnabled);
+    dom.micToggle.closest('.setting')?.classList.toggle('setting--disabled', !micEnabled);
   }
   
   if (dom.sysAudioToggle) {
     dom.sysAudioToggle.classList.toggle('toggle--active', sysAudioEnabled);
     dom.sysAudioToggle.setAttribute('aria-checked', sysAudioEnabled);
+    dom.sysAudioToggle.closest('.setting')?.classList.toggle('setting--disabled', !sysAudioEnabled);
   }
   
   if (dom.audioOutputContainer) {
@@ -412,6 +416,7 @@ async function handleMicToggle() {
   if (dom.micToggle) {
     dom.micToggle.classList.toggle('toggle--active', micEnabled);
     dom.micToggle.setAttribute('aria-checked', micEnabled);
+    dom.micToggle.closest('.setting')?.classList.toggle('setting--disabled', !micEnabled);
   }
 
   if (micEnabled) {
@@ -449,6 +454,7 @@ async function handleSysAudioToggle() {
   if (dom.sysAudioToggle) {
     dom.sysAudioToggle.classList.toggle('toggle--active', sysAudioEnabled);
     dom.sysAudioToggle.setAttribute('aria-checked', sysAudioEnabled);
+    dom.sysAudioToggle.closest('.setting')?.classList.toggle('setting--disabled', !sysAudioEnabled);
   }
   
   if (dom.audioOutputContainer) {

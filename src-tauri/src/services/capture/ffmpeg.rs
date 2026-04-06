@@ -129,11 +129,11 @@ pub fn build_video_input(
     fps: u32,
 ) -> String {
     if let Some(hwnd) = window_handle {
-        format!("gfxcapture=window_handle={:#x}:max_framerate={fps}:capture_cursor=1", hwnd)
+        format!("gfxcapture=window_handle={:#x}:max_framerate={fps}:capture_cursor=1:display_border=0", hwnd)
     } else if let Some(hmonitor) = monitor_handle {
-        format!("gfxcapture=hmonitor={hmonitor}:max_framerate={fps}:capture_cursor=1")
+        format!("gfxcapture=hmonitor={hmonitor}:max_framerate={fps}:capture_cursor=1:display_border=0")
     } else {
-        format!("gfxcapture=monitor_idx={monitor_index}:max_framerate={fps}:capture_cursor=1")
+        format!("gfxcapture=monitor_idx={monitor_index}:max_framerate={fps}:capture_cursor=1:display_border=0")
     }
 }
 
@@ -290,15 +290,15 @@ mod tests {
     fn build_video_input_uses_supported_gfxcapture_options() {
         assert_eq!(
             build_video_input(None, 0, None, 60),
-            "gfxcapture=monitor_idx=0:max_framerate=60:capture_cursor=1"
+            "gfxcapture=monitor_idx=0:max_framerate=60:capture_cursor=1:display_border=0"
         );
         assert_eq!(
             build_video_input(None, 0, Some(0x1234), 60),
-            "gfxcapture=window_handle=0x1234:max_framerate=60:capture_cursor=1"
+            "gfxcapture=window_handle=0x1234:max_framerate=60:capture_cursor=1:display_border=0"
         );
         assert_eq!(
             build_video_input(Some(456), 0, None, 60),
-            "gfxcapture=hmonitor=456:max_framerate=60:capture_cursor=1"
+            "gfxcapture=hmonitor=456:max_framerate=60:capture_cursor=1:display_border=0"
         );
     }
 

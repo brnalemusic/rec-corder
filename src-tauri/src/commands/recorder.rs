@@ -132,8 +132,8 @@ pub async fn show_settings(app: AppHandle) -> Result<(), String> {
             tauri::WebviewUrl::App("settings.html".into()),
         )
         .title("Configurações - Rec Corder")
-        .inner_size(500.0, 650.0)
-        .min_inner_size(450.0, 550.0)
+        .inner_size(930.0, 750.0)
+        .min_inner_size(800.0, 650.0)
         .resizable(true)
         .decorations(true)
         .center()
