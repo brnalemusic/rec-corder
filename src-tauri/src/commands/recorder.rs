@@ -6,7 +6,11 @@ use parking_lot::Mutex as ParkingMutex;
 use serde::Serialize;
 use tauri::{AppHandle, Manager, State, Emitter};
 
-use crate::services::capture::{self, AudioOutputInfo, CaptureSession, MicInfo, MonitorInfo};
+use crate::services::capture::{
+    self, AudioOutputInfo, CaptureSession, MicInfo, MonitorInfo,
+    ffmpeg::resolve_ffmpeg_path,
+    session::WebcamOverlayConfig,
+};
 use crate::services::watchdog;
 use crate::state::AppState;
 
@@ -29,6 +33,12 @@ pub struct RecordingStatus {
 #[derive(Serialize)]
 pub struct StartResult {
     pub file_path: String,
+}
+
+#[derive(Serialize)]
+pub struct CameraInfo {
+    pub name: String,
+    pub id: String,
 }
 
 #[derive(Serialize)]
@@ -208,7 +218,19 @@ pub fn start_recording(
 
     let encoder = config.encoder.clone();
 
-    let session = match CaptureSession::start(file_path.clone(), monitor, mic_name.or(config.selected_mic.clone()), system_audio_device.or(config.selected_audio_output.clone()), configured_fps, scale, &encoder) {
+    let webcam_config = if config.webcam_enabled {
+        config.webcam_device.as_ref().map(|name| {
+            WebcamOverlayConfig {
+                device_name: name.clone(),
+                position: config.webcam_position.clone(),
+                size_percent: config.webcam_size,
+            }
+        })
+    } else {
+        None
+    };
+
+    let session = match CaptureSession::start(file_path.clone(), monitor, mic_name.or(config.selected_mic.clone()), system_audio_device.or(config.selected_audio_output.clone()), configured_fps, scale, &encoder, webcam_config) {
         Ok(session) => session,
         Err(err) => {
             watchdog::clear_crash_marker(&output_dir);
@@ -274,6 +296,14 @@ pub async fn stop_recording(
 }
 
 #[tauri::command]
+pub fn force_exit(session_handle: State<'_, SessionHandle>) {
+    if let Some(mut active) = session_handle.lock().take() {
+        active.session.kill();
+    }
+    std::process::exit(0);
+}
+
+#[tauri::command]
 pub fn get_output_dir(state: State<'_, AppState>) -> String {
     state.output_dir.lock().to_string_lossy().to_string()
 }
@@ -302,4 +332,79 @@ pub fn set_output_dir(app: AppHandle, state: State<'_, AppState>, path: String) 
 pub fn check_crash_recovery(state: State<'_, AppState>) -> Option<String> {
     let output_dir = state.output_dir.lock().clone();
     watchdog::check_crash_recovery(&output_dir).map(|p| p.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub async fn list_cameras() -> Result<Vec<CameraInfo>, String> {
+    use std::process::{Command, Stdio};
+    use std::os::windows::process::CommandExt;
+    use super::super::services::capture::ffmpeg::CREATE_NO_WINDOW;
+
+    let mut cameras = Vec::new();
+
+    // Tenta usar FFmpeg primeiro
+    if let Ok(ffmpeg_path) = resolve_ffmpeg_path() {
+        if let Ok(output) = Command::new(ffmpeg_path)
+            .creation_flags(CREATE_NO_WINDOW)
+            .args(["-list_devices", "true", "-f", "dshow", "-i", "dummy"])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
+        {
+            let combined_output = format!("{}\n{}", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr));
+            let mut in_video_section = false;
+
+            for line in combined_output.lines() {
+                let line_lower = line.to_lowercase();
+                if line_lower.contains("directshow video devices") {
+                    in_video_section = true;
+                    continue;
+                }
+                if line_lower.contains("directshow audio devices") {
+                    break;
+                }
+                if in_video_section {
+                    // Device names appear between quotes: "Device Name"
+                    if let Some(start) = line.find('"') {
+                        if let Some(end) = line[start + 1..].find('"') {
+                            let name = line[start + 1..start + 1 + end].to_string();
+                            // Skip "alternative name" lines
+                            if !line_lower.contains("alternative name") {
+                                cameras.push(CameraInfo {
+                                    id: name.clone(),
+                                    name,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Fallback: PowerShell if ffmpeg fails or finds no cameras
+    if cameras.is_empty() {
+        if let Ok(output) = Command::new("powershell")
+            .creation_flags(CREATE_NO_WINDOW)
+            .args([
+                "-NoProfile",
+                "-Command",
+                "Get-PnpDevice -PresentOnly | Where-Object { $_.PNPClass -eq 'Camera' -or $_.PNPClass -eq 'Image' } | Select-Object -ExpandProperty FriendlyName"
+            ])
+            .output()
+        {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            for line in stdout.lines() {
+                let name = line.trim().to_string();
+                if !name.is_empty() {
+                    cameras.push(CameraInfo {
+                        id: name.clone(),
+                        name,
+                    });
+                }
+            }
+        }
+    }
+
+    Ok(cameras)
 }

@@ -33,7 +33,6 @@ scripts/*
 dxdiag.txt
 pubkey.txt
 GIT_WORKFLOW.md
-
 # --- Editor & OS Specific ---
 .vscode/*
 !.vscode/extensions.json

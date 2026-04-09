@@ -19,11 +19,11 @@ pub async fn check_for_updates(
             let parsed_update = semver::Version::parse(&update_version);
             let parsed_current = semver::Version::parse(&current_version);
 
-            if let (Ok(u_ver), Ok(c_ver)) = (parsed_update, parsed_current) {
+            if let (Ok(_u_ver), Ok(_c_ver)) = (parsed_update, parsed_current) {
                 // Em produção (release), impede downgrades.
                 // Em desenvolvimento (debug), permite ver a tela mesmo na mesma versão para testes.
                 #[cfg(not(debug_assertions))]
-                if u_ver <= c_ver {
+                if _u_ver <= _c_ver {
                     return Ok(None);
                 }
             }
@@ -92,6 +92,70 @@ pub async fn show_updater(app: AppHandle<Wry>, version: String, body: Option<Str
         window.listen("updater-ready", move |_| {
             let _ = w_handle.emit("updater-data", (v.clone(), b.clone()));
         });
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_release_notes(app: AppHandle<Wry>, version: String) -> Result<Option<String>, String> {
+    let _ = version; // Mark as used to avoid warnings
+    // 1. Tenta ler do diretório de recursos (se estiver empacotado)
+    if let Ok(mut resource_path) = app.path().resource_dir() {
+        resource_path.push("UPDATE.md");
+        if let Ok(content) = std::fs::read_to_string(resource_path) {
+            return Ok(Some(content));
+        }
+    }
+    
+    // 2. Tenta ler do diretório raiz durante o desenvolvimento (um nível acima de src-tauri)
+    if let Ok(content) = std::fs::read_to_string("../UPDATE.md") {
+        return Ok(Some(content));
+    }
+
+    // 3. Fallback para lowercase
+    if let Ok(content) = std::fs::read_to_string("../update.md") {
+        return Ok(Some(content));
+    }
+
+    // 4. Fallback final para o diretório atual
+    if let Ok(content) = std::fs::read_to_string("UPDATE.md") {
+        return Ok(Some(content));
+    }
+
+    Ok(None)
+}
+
+#[tauri::command]
+pub async fn show_release_notes(app: AppHandle<Wry>) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("release-notes") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    } else {
+        let url = "release-notes.html".to_string();
+        let window = tauri::WebviewWindowBuilder::new(
+            &app,
+            "release-notes",
+            tauri::WebviewUrl::App(url.into()),
+        )
+        .title("Notas de Lançamento - Rec Corder")
+        .inner_size(750.0, 800.0)
+        .resizable(true)
+        .decorations(true)
+        .center()
+        .always_on_top(true)
+        .visible(false)
+        .build()
+        .map_err(|e| e.to_string())?;
+
+        let w_handle_close = window.clone();
+        window.listen("release-notes-close", move |_| {
+            let _ = w_handle_close.close();
+        });
+
+        // A janela agora busca os dados sozinha via comandos quando carrega
+        let _ = window.show();
+        let _ = window.set_focus();
     }
     Ok(())
 }

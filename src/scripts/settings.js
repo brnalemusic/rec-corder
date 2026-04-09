@@ -11,6 +11,7 @@ const state = {
   monitors: [],
   mics: [],
   audioOutputs: [],
+  cameras: [],
   isDirty: false,
 };
 
@@ -25,6 +26,14 @@ const elements = {
   fpsBtns: document.querySelectorAll('.fps-btn'),
   scaleSlider: document.getElementById('scaleSlider'),
   scaleValue: document.getElementById('scaleValue'),
+
+  // Webcam
+  webcamToggle: document.getElementById('webcamToggleSettings'),
+  cameraSelect: document.getElementById('cameraSelect'),
+  positionBtns: document.querySelectorAll('.pos-btn'),
+  webcamSizeSlider: document.getElementById('webcamSizeSlider'),
+  webcamSizeValue: document.getElementById('webcamSizeValue'),
+  webcamDetails: document.querySelectorAll('.webcam-detail'),
 
   // Audio
   micSelect: document.getElementById('micSelect'),
@@ -60,6 +69,7 @@ async function init() {
       loadMics(),
       loadAudioOutputs(),
       loadOutputDir(),
+      loadCameras(),
     ]);
 
     // Setup event listeners
@@ -135,6 +145,33 @@ function updateUIFromConfig() {
   elements.micVolumeSlider.value = micVolume;
   updateMicVolumeDisplay(micVolume);
 
+  // Webcam toggle
+  const webcamEnabled = state.config.webcam_enabled === true;
+  elements.webcamToggle.classList.toggle('toggle--active', webcamEnabled);
+  elements.webcamToggle.classList.toggle('brutalist-toggle--active', webcamEnabled);
+  elements.webcamToggle.setAttribute('aria-checked', webcamEnabled);
+
+  // Show/hide webcam detail cards
+  elements.webcamDetails.forEach(card => {
+    card.classList.toggle('webcam-detail--hidden', !webcamEnabled);
+  });
+
+  // Webcam camera
+  if (state.config.webcam_device) {
+    elements.cameraSelect.value = state.config.webcam_device;
+  }
+
+  // Webcam position
+  const pos = state.config.webcam_position || 'bottom-right';
+  elements.positionBtns.forEach(btn => {
+    btn.classList.toggle('pos-btn--active', btn.dataset.pos === pos);
+  });
+
+  // Webcam size
+  const webcamSize = state.config.webcam_size || 100;
+  elements.webcamSizeSlider.value = webcamSize;
+  updateWebcamSizeDisplay(webcamSize);
+
   state.isDirty = false;
 }
 
@@ -189,6 +226,34 @@ async function loadAudioOutputs() {
     });
   } catch (error) {
     console.error('Error loading audio outputs:', error);
+  }
+}
+
+/**
+ * Load available cameras via FFmpeg DirectShow
+ */
+async function loadCameras() {
+  try {
+    state.cameras = await Recorder.listCameras();
+    elements.cameraSelect.innerHTML = '';
+    if (state.cameras.length === 0) {
+      elements.cameraSelect.innerHTML = '<option value="">Nenhuma câmera encontrada</option>';
+      elements.webcamToggle.style.pointerEvents = 'none';
+      elements.webcamToggle.style.opacity = '0.4';
+      return;
+    }
+    state.cameras.forEach(cam => {
+      const option = document.createElement('option');
+      option.value = cam.id;
+      option.textContent = cam.name;
+      elements.cameraSelect.appendChild(option);
+    });
+    // Auto-select saved camera from config
+    if (state.config?.webcam_device) {
+      elements.cameraSelect.value = state.config.webcam_device;
+    }
+  } catch (error) {
+    console.error('Error loading cameras:', error);
   }
 }
 
@@ -274,6 +339,39 @@ function setupEventListeners() {
     state.isDirty = true;
   });
 
+  // Webcam toggle
+  elements.webcamToggle.addEventListener('click', () => {
+    if (state.cameras.length === 0) return;
+    const isActive = !elements.webcamToggle.classList.contains('toggle--active');
+    elements.webcamToggle.classList.toggle('toggle--active', isActive);
+    elements.webcamToggle.classList.toggle('brutalist-toggle--active', isActive);
+    elements.webcamToggle.setAttribute('aria-checked', isActive);
+    elements.webcamDetails.forEach(card => {
+      card.classList.toggle('webcam-detail--hidden', !isActive);
+    });
+    state.isDirty = true;
+  });
+
+  // Camera selection
+  elements.cameraSelect.addEventListener('change', () => {
+    state.isDirty = true;
+  });
+
+  // Position buttons
+  elements.positionBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      elements.positionBtns.forEach(b => b.classList.remove('pos-btn--active'));
+      btn.classList.add('pos-btn--active');
+      state.isDirty = true;
+    });
+  });
+
+  // Webcam size slider
+  elements.webcamSizeSlider.addEventListener('input', (e) => {
+    updateWebcamSizeDisplay(e.target.value);
+    state.isDirty = true;
+  });
+
   // Output path button
   elements.outputPath.addEventListener('click', () => {
     selectOutputDirectory();
@@ -304,6 +402,15 @@ function updateMicVolumeDisplay(value) {
 }
 
 /**
+ * Update webcam size display
+ */
+function updateWebcamSizeDisplay(value) {
+  elements.webcamSizeValue.textContent = `${value}%`;
+  const percent = ((value - 50) / 250) * 100;
+  elements.webcamSizeSlider.style.setProperty('--value', `${percent}%`);
+}
+
+/**
  * Save configuration to backend
  */
 async function saveConfig() {
@@ -326,6 +433,10 @@ async function saveConfig() {
       mic_enabled: elements.micSelect.value ? state.config.mic_enabled : false,
       sys_audio_enabled: sysAudioEnabled,
       mic_volume: parseInt(elements.micVolumeSlider.value),
+      webcam_enabled: elements.webcamToggle.classList.contains('toggle--active'),
+      webcam_device: elements.cameraSelect.value || null,
+      webcam_position: document.querySelector('.pos-btn--active')?.dataset.pos || 'bottom-right',
+      webcam_size: parseInt(elements.webcamSizeSlider.value),
     };
 
     await Recorder.updateConfig(config);
@@ -357,6 +468,10 @@ async function resetToDefaults() {
         selected_mic: null,
         selected_audio_output: null,
         mic_volume: 100,
+        webcam_enabled: false,
+        webcam_device: null,
+        webcam_position: 'bottom-right',
+        webcam_size: 100,
       };
 
       await Recorder.updateConfig(defaultConfig);

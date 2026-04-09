@@ -31,6 +31,16 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Get Release Notes
+        id: get_notes
+        shell: bash
+        run: |
+          {
+            echo 'RELEASE_BODY<<EOF'
+            cat UPDATE.md
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build and publish
         uses: tauri-apps/tauri-action@v0
         env:
@@ -40,6 +50,6 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Rec Corder ${{ github.ref_name }}"
-          releaseBody: "Atualização automática para ${{ github.ref_name }}."
+          releaseBody: ${{ steps.get_notes.outputs.RELEASE_BODY }}
           releaseDraft: false
           prerelease: ${{ contains(github.ref_name, 'alpha') }}

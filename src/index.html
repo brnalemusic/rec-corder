@@ -41,10 +41,10 @@
         <img src="assets/logo.png" alt="Rec Corder" class="header__app-icon" />
         <span class="header__title">Rec Corder</span>
       </div>
-      <div class="header__version-container" tabindex="0">
+      <div class="header__version-container" id="versionDisplay" tabindex="0" style="cursor: pointer;">
         <span class="header__version"></span>
         <div class="header__tooltip">
-          Você está utilizando uma versão estável do Rec Corder. Se encontrar erros, reporte no GitHub.
+          Clique para ver as notas de lançamento.
         </div>
       </div>
     </header>
@@ -113,6 +113,23 @@
           <div class="toggle__knob"></div>
         </div>
       </div>
+
+      <!-- Webcam Toggle -->
+      <div class="setting" id="webcamSetting">
+        <div class="setting__left">
+          <div class="setting__icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m22 8-6 4 6 4V8Z"/>
+              <rect width="14" height="12" x="2" y="6" rx="2" ry="2"/>
+            </svg>
+          </div>
+          <div class="setting__label">Webcam</div>
+        </div>
+        <div class="toggle" id="webcamToggle" role="switch" aria-checked="false" tabindex="0">
+          <div class="toggle__knob"></div>
+        </div>
+      </div>
     </section>
 
     <!-- Status Bar -->
@@ -124,6 +141,24 @@
       <button class="status-bar__btn" id="videoConfigBtn" aria-label="Configurações de vídeo"
         title="Clique para abrir configurações">MP4 · H.264 · 60fps · 100%</button>
     </footer>
+
+    <!-- Exit Confirmation Modal -->
+    <div class="modal-backdrop hidden" id="exitModalBackdrop" style="z-index: 9999;">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="exitModalTitle">
+        <div class="modal__header">
+          <h2 class="modal__title" id="exitModalTitle">Confirmar saída</h2>
+          <button class="modal__close" id="closeExitModal" aria-label="Cancelar saída">×</button>
+        </div>
+        <div class="modal__body">
+          <p style="color: var(--text-primary); font-size: 14px; line-height: 1.5; margin: 0;">Tem certeza que deseja sair?</p>
+          <p style="color: #ff4d4f; font-size: 13px; line-height: 1.5; margin: 8px 0 0 0;">Se você estiver gravando, a gravação atual será <strong>corrompida</strong> e perdida.</p>
+        </div>
+        <div class="modal__footer" style="display: flex; gap: 12px; justify-content: flex-end;">
+          <button class="btn" id="cancelExitBtn" style="padding: 0 16px; background: transparent; border: 1px solid var(--border-soft); color: var(--text-primary); border-radius: var(--radius-sm); cursor: pointer; transition: background 0.2s;">Cancelar</button>
+          <button class="btn btn--full-accent" id="confirmExitBtn" style="background: #dc3545; color: white;">Sair Mesmo Assim</button>
+        </div>
+      </div>
+    </div>
 
     <script type="module" src="scripts/utils.js"></script>
     <script type="module" src="scripts/recorder.js"></script>

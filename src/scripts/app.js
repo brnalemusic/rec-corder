@@ -18,6 +18,8 @@ let currentScale = 100;
 let sysAudioEnabled = true;
 let selectedAudioOutput = null;
 let selectedMicId = null;
+let webcamEnabled = false;
+let webcamAvailable = false;
 
 function resolveSelectedMonitor(monitors) {
   if (!Array.isArray(monitors) || monitors.length === 0) {
@@ -40,6 +42,7 @@ async function syncPrefs() {
     config.scale = currentScale;
     config.selected_mic = selectedMicId;
     config.selected_audio_output = selectedAudioOutput;
+    config.webcam_enabled = webcamEnabled;
     
     if (dom.outputPath && dom.outputPath.title) {
       config.output_dir = dom.outputPath.title;
@@ -63,6 +66,7 @@ async function init() {
     currentScale = config.scale;
     selectedAudioOutput = config.selected_audio_output;
     selectedMicId = config.selected_mic;
+    webcamEnabled = config.webcam_enabled === true;
   }
 
   // Listen for config updates from other windows (e.g. Settings)
@@ -90,6 +94,15 @@ async function init() {
         dom.sysAudioToggle.setAttribute('aria-checked', sysAudioEnabled);
         dom.sysAudioToggle.closest('.setting')?.classList.toggle('setting--disabled', !sysAudioEnabled);
       }
+
+      // Sync webcam state
+      webcamEnabled = updatedConfig.webcam_enabled === true;
+      if (dom.webcamToggle) {
+        dom.webcamToggle.classList.toggle('toggle--active', webcamEnabled);
+        dom.webcamToggle.setAttribute('aria-checked', webcamEnabled);
+        dom.webcamToggle.closest('.setting')?.classList.toggle('setting--disabled', !webcamEnabled);
+      }
+
       if (dom.videoConfigBtn) {
         dom.videoConfigBtn.textContent = `MP4 · H.264 · ${currentFps}fps · ${currentScale}%`;
       }
@@ -160,6 +173,30 @@ async function init() {
     dom.sysAudioToggle.setAttribute('aria-checked', sysAudioEnabled);
     dom.sysAudioToggle.closest('.setting')?.classList.toggle('setting--disabled', !sysAudioEnabled);
   }
+
+  // Detect available cameras and apply webcam visual state
+  try {
+    const cameras = await recorder.listCameras();
+    webcamAvailable = cameras.length > 0;
+    if (!webcamAvailable) webcamEnabled = false;
+  } catch (_) {
+    webcamAvailable = false;
+    webcamEnabled = false;
+  }
+
+  if (dom.webcamToggle) {
+    dom.webcamToggle.classList.toggle('toggle--active', webcamEnabled);
+    dom.webcamToggle.setAttribute('aria-checked', webcamEnabled);
+    dom.webcamToggle.closest('.setting')?.classList.toggle('setting--disabled', !webcamEnabled);
+  }
+  if (!webcamAvailable && dom.webcamSetting) {
+    if (dom.webcamToggle) {
+      dom.webcamToggle.style.pointerEvents = 'none';
+      dom.webcamToggle.style.opacity = '0.35';
+    }
+    dom.webcamSetting.classList.add('setting--disabled');
+    dom.webcamSetting.title = 'Nenhuma câmera encontrada';
+  }
   
   if (dom.audioOutputContainer) {
     dom.audioOutputContainer.style.opacity = sysAudioEnabled ? '1' : '0.5';
@@ -227,8 +264,66 @@ function bindEvents() {
     }
   });
 
+  dom.webcamToggle?.addEventListener('click', handleWebcamToggle);
+  dom.webcamToggle?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleWebcamToggle();
+    }
+  });
+
   dom.videoConfigBtn?.addEventListener('click', openVideoConfigModal);
+
+  dom.versionDisplay?.addEventListener('click', handleVersionClick);
+
+  // Setup exit confirmation modal
+  try {
+    const { getCurrentWindow } = window.__TAURI__.window;
+    const { invoke } = window.__TAURI__.core;
+    const appWindow = getCurrentWindow();
+    appWindow.onCloseRequested(async (event) => {
+      if (isRecording) {
+        event.preventDefault();
+        if (dom.exitModalBackdrop) {
+          dom.exitModalBackdrop.classList.remove('hidden');
+        }
+      } else {
+        // Quit the entire application immediately if not recording
+        await invoke('force_exit');
+      }
+    });
+    
+    dom.confirmExitBtn?.addEventListener('click', async () => {
+      try {
+        await invoke('force_exit');
+      } catch (error) {
+        console.error('Failed to destroy app:', error);
+      }
+    });
+  } catch (error) {
+    console.error('Failed to setup onCloseRequested:', error);
+  }
+
+  const hideExitModal = () => {
+    dom.exitModalBackdrop?.classList.add('hidden');
+  };
+
+  dom.closeExitModal?.addEventListener('click', hideExitModal);
+  dom.cancelExitBtn?.addEventListener('click', hideExitModal);
 }
+
+async function handleVersionClick() {
+  try {
+    // Remove focus from the version container so the tooltip disappears
+    dom.versionDisplay?.blur();
+
+    // Mostra a janela imediatamente
+    await recorder.showReleaseNotes();
+  } catch (error) {
+    console.error('Error opening release notes:', error);
+  }
+}
+
 
 async function loadAudioOutputs() {
   try {
@@ -372,6 +467,7 @@ function updateUI() {
       dom.videoConfigBtn.style.opacity = '0.5';
     }
     if (dom.sysAudioToggle) dom.sysAudioToggle.style.pointerEvents = 'none';
+    if (dom.webcamToggle) dom.webcamToggle.style.pointerEvents = 'none';
     
     if (dom.audioOutputSelect) {
       dom.audioOutputSelect.disabled = true;
@@ -403,6 +499,7 @@ function updateUI() {
     dom.videoConfigBtn.style.opacity = isRecording ? '0.5' : '1';
   }
   if (dom.sysAudioToggle) dom.sysAudioToggle.style.pointerEvents = isRecording ? 'none' : 'auto';
+  if (dom.webcamToggle) dom.webcamToggle.style.pointerEvents = isRecording ? 'none' : 'auto';
   
   if (dom.audioOutputSelect) {
     dom.audioOutputSelect.disabled = isRecording || !sysAudioEnabled;
@@ -423,6 +520,17 @@ async function handleMicToggle() {
     if (!selectedMicId) {
       await loadMics();
     }
+  }
+  await syncPrefs();
+}
+
+async function handleWebcamToggle() {
+  if (isRecording || !webcamAvailable) return;
+  webcamEnabled = !webcamEnabled;
+  if (dom.webcamToggle) {
+    dom.webcamToggle.classList.toggle('toggle--active', webcamEnabled);
+    dom.webcamToggle.setAttribute('aria-checked', webcamEnabled);
+    dom.webcamToggle.closest('.setting')?.classList.toggle('setting--disabled', !webcamEnabled);
   }
   await syncPrefs();
 }

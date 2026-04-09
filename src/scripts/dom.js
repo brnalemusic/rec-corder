@@ -18,6 +18,13 @@ export const dom = {
   audioOutputContainer: $('audioOutputContainer'),
   processingIndicator: $('processingIndicator'),
   processingText: $('processingText'),
+  webcamToggle: $('webcamToggle'),
+  webcamSetting: $('webcamSetting'),
+  versionDisplay: $('versionDisplay'),
+  exitModalBackdrop: $('exitModalBackdrop'),
+  closeExitModal: $('closeExitModal'),
+  cancelExitBtn: $('cancelExitBtn'),
+  confirmExitBtn: $('confirmExitBtn'),
 };
 
 export function setupSecurity() {

@@ -89,6 +89,52 @@
               </div>
             </div>
           </div>
+
+          <!-- Webcam -->
+          <div class="card card--row">
+            <div>
+              <label class="card__label">Webcam</label>
+              <p class="card__hint">Sobrepõe o feed da câmera na gravação.</p>
+            </div>
+            <div class="brutalist-toggle" id="webcamToggleSettings" role="switch" aria-checked="false" tabindex="0">
+              <div class="brutalist-toggle__knob"></div>
+            </div>
+          </div>
+
+          <div class="card webcam-detail webcam-detail--hidden" id="webcamCameraCard">
+            <label class="card__label">Câmera</label>
+            <div class="select-wrapper">
+              <select class="select select--full" id="cameraSelect">
+                <option value="">Nenhuma câmera encontrada</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="card webcam-detail webcam-detail--hidden" id="webcamPositionCard">
+            <label class="card__label">Posição do Overlay</label>
+            <div class="position-grid">
+              <button class="pos-btn" data-pos="top-left" title="Superior Esquerdo">↖</button>
+              <button class="pos-btn" data-pos="top-right" title="Superior Direito">↗</button>
+              <button class="pos-btn pos-btn--center" data-pos="center" title="Centro">⊕</button>
+              <button class="pos-btn" data-pos="bottom-left" title="Inferior Esquerdo">↙</button>
+              <button class="pos-btn pos-btn--active" data-pos="bottom-right" title="Inferior Direito">↘</button>
+            </div>
+          </div>
+
+          <div class="card webcam-detail webcam-detail--hidden" id="webcamSizeCard">
+            <div class="card__header">
+              <label class="card__label">Tamanho do Overlay</label>
+              <span class="badge" id="webcamSizeValue">100%</span>
+            </div>
+            <div class="slider-container">
+              <input type="range" class="brutalist-slider" id="webcamSizeSlider" min="50" max="300" value="100" step="10">
+              <div class="slider-marks">
+                <span>50%</span>
+                <span>300%</span>
+              </div>
+            </div>
+            <p class="card__hint">Base: 200px. Intervalo: 100px (50%) a 600px (300%).</p>
+          </div>
         </div>
       </div>
 

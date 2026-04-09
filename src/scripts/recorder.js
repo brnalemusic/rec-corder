@@ -132,7 +132,24 @@ export async function showUpdater(version, body = null) {
   return invoke('show_updater', { version, body });
 }
 
+/** Get release notes for a specific version. */
+export async function getReleaseNotes(version) {
+  return invoke('get_release_notes', { version });
+}
+
+/** Show the release notes window. */
+export async function showReleaseNotes() {
+  return invoke('show_release_notes');
+}
+
 /** Install the pending update (handled by backend). */
 export async function installUpdate() {
   return invoke('install_update');
+}
+
+/** @typedef {{ name: string, id: string }} CameraInfo */
+
+/** List available cameras (DirectShow video devices). */
+export async function listCameras() {
+  return invoke('list_cameras');
 }

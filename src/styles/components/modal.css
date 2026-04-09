@@ -2,7 +2,9 @@
 .modal-backdrop {
   position: absolute;
   top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   z-index: 100;
   display: flex;
   align-items: center;
@@ -25,6 +27,7 @@
   box-shadow: var(--shadow-xl);
   display: flex;
   flex-direction: column;
+  opacity: 1;
   animation: slideUpModal 0.25s var(--transition-normal);
 }
 

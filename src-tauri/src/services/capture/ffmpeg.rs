@@ -147,7 +147,6 @@ pub fn append_common_inputs(
     let video_input = build_video_input(monitor_handle, monitor_index, window_handle, fps);
     cmd.args(["-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i"]);
     cmd.arg(video_input);
-    cmd.args(["-map", "0:v:0"]);
 }
 
 pub fn build_capture_filter(scale_factor: u32, fps: u32, pixel_format: &str) -> String {
@@ -241,6 +240,45 @@ pub fn append_encoder_args(
     if enable_faststart {
         cmd.args(["-movflags", "+faststart"]);
     }
+}
+
+/// Add a DirectShow webcam as the second video input to the FFmpeg command.
+pub fn append_webcam_input(cmd: &mut Command, device_name: &str) {
+    cmd.args([
+        "-f", "dshow",
+        "-video_size", "640x480",
+        "-framerate", "30",
+        "-i",
+    ]);
+    cmd.arg(format!("video={}", device_name));
+}
+
+/// Build the video filter string with webcam overlay composited onto the screen capture.
+///
+/// - `base_vf`: The existing video filter string (e.g. "hwdownload,format=bgra,fps=60,format=yuv420p")
+/// - `position`: "top-left" | "top-right" | "bottom-left" | "bottom-right" | "center"
+/// - `size_percent`: Percentage of base size (200px). Range 50–300.
+///
+/// Returns the full `-filter_complex` value to replace the simple `-vf`.
+pub fn build_webcam_overlay_filter(
+    base_vf: &str,
+    position: &str,
+    size_percent: u32,
+) -> String {
+    let overlay_width = 200 * size_percent / 100;
+    let overlay_height = overlay_width * 3 / 4; // 4:3 aspect ratio
+
+    let position_expr = match position {
+        "top-left"     => "0:0".to_string(),
+        "top-right"    => format!("W-{overlay_width}:0"),
+        "bottom-left"  => format!("0:H-{overlay_height}"),
+        "center"       => format!("(W-{overlay_width})/2:(H-{overlay_height})/2"),
+        _              => format!("W-{overlay_width}:H-{overlay_height}"), // default: bottom-right
+    };
+
+    format!(
+        "[0:v]{base_vf}[vid];[1:v]scale={overlay_width}:{overlay_height}[cam];[vid][cam]overlay={position_expr}[out]"
+    )
 }
 
 pub fn test_environment() -> String {

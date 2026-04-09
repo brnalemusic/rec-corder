@@ -26,9 +26,7 @@ pub fn run() {
         .manage(PendingUpdate(Mutex::new(None)))
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                if window.label() == "main" {
-                    window.app_handle().exit(0);
-                } else if window.label() == "settings" {
+                if window.label() == "settings" {
                     let _ = window.hide();
                     api.prevent_close();
                 }
@@ -40,6 +38,7 @@ pub fn run() {
             recorder::get_status,
             recorder::start_recording,
             recorder::stop_recording,
+            recorder::force_exit,
             recorder::list_monitors,
             recorder::list_mics,
             recorder::list_audio_outputs,
@@ -51,9 +50,12 @@ pub fn run() {
             recorder::test_environment,
             recorder::finish_splash,
             recorder::get_app_info,
+            recorder::list_cameras,
             ffmpeg::check_ffmpeg,
             updater::check_for_updates,
             updater::show_updater,
+            updater::get_release_notes,
+            updater::show_release_notes,
             updater::install_update,
             updater::open_link,
         ])

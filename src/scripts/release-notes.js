@@ -1,48 +1,36 @@
-const { invoke } = window.__TAURI__.core;
-const { listen, emit } = window.__TAURI__.event;
-const { getCurrentWindow } = window.__TAURI__.window;
-
-const appWindow = getCurrentWindow();
+import * as recorder from './recorder.js';
 
 // Elements
-const btnCancel = document.getElementById('btn-cancel');
-const btnInstall = document.getElementById('btn-install');
-const statusText = document.getElementById('status-text');
-const newVersionSpan = document.getElementById('new-version');
-const downloadSection = document.getElementById('download-section');
-const progressFill = document.getElementById('progress-fill');
-const downloadPercent = document.getElementById('download-percent');
-const downloadStatus = document.getElementById('download-status');
-const changelogContainer = document.getElementById('changelog-container');
+const versionSubtitle = document.getElementById('version-subtitle');
+const loading = document.getElementById('loading');
+const contentArea = document.getElementById('content-area');
 const changelogContent = document.getElementById('changelog-content');
 
-// Listen for data from the backend
-let unlistenData;
-
 async function init() {
-  // Configure marked for tables and GFM
-  if (window.marked) {
-    const options = {
-      gfm: true,
-      breaks: true,
-      tables: true
-    };
-    
-    if (typeof window.marked.setOptions === 'function') {
-      window.marked.setOptions(options);
+  try {
+    // Configure marked for tables and GFM
+    if (window.marked) {
+      const options = {
+        gfm: true,
+        breaks: true,
+        tables: true
+      };
+      
+      if (typeof window.marked.setOptions === 'function') {
+        window.marked.setOptions(options);
+      }
     }
-  }
 
-  unlistenData = await listen('updater-data', (event) => {
-    const [version, body] = event.payload;
-    
+    // Busca a versão atual do app
+    const version = await recorder.getAppVersion();
     if (version) {
-      newVersionSpan.textContent = `v${version}`;
+      versionSubtitle.textContent = `Versão v${version}`;
     }
+
+    // Busca as notas de lançamento locais (UPDATE.md)
+    const body = await recorder.getReleaseNotes(version);
 
     if (body) {
-      changelogContainer.classList.remove('hidden');
-      
       let processedBody = body;
       
       // Simple emoji replacement support
@@ -134,85 +122,13 @@ async function init() {
       } else {
         changelogContent.textContent = processedBody;
       }
+    } else {
+      loading.innerHTML = '<p>Não foi possível carregar as notas de lançamento para esta versão.</p>';
     }
-
-    // Now that everything is rendered, show the window
-    appWindow.show();
-    appWindow.setFocus();
-  });
-
-  // Notifica o backend que o frontend está pronto para receber os dados
-  await emit('updater-ready');
+  } catch (error) {
+    console.error('Error loading release notes:', error);
+    loading.innerHTML = '<p>Erro ao carregar as notas de lançamento.</p>';
+  }
 }
 
 init();
-
-btnCancel.addEventListener('click', async () => {
-  await emit('updater-close');
-});
-
-btnInstall.addEventListener('click', async () => {
-  try {
-    btnInstall.disabled = true;
-    btnCancel.disabled = true;
-    
-    downloadSection.classList.remove('hidden');
-    changelogContainer.classList.add('hidden'); 
-    statusText.textContent = 'Baixando atualização... Por favor, não feche o aplicativo.';
-    
-    let downloadTotal = 0;
-    let downloadedBytes = 0;
-
-    const unlistenProgress = await listen('update-progress', (event) => {
-      const payload = event.payload;
-      const chunk = payload.chunk;
-      downloadTotal = payload.total || downloadTotal;
-      downloadedBytes += chunk;
-
-      if (downloadTotal > 0) {
-        const percent = Math.round((downloadedBytes / downloadTotal) * 100);
-        progressFill.style.width = `${percent}%`;
-        downloadPercent.textContent = `${percent}%`;
-        downloadStatus.textContent = `Baixando (${percent}%)`;
-      }
-    });
-
-    const unlistenFinished = await listen('update-finished', () => {
-      downloadStatus.textContent = 'Instalando...';
-      statusText.textContent = 'A atualização foi baixada e está sendo aplicada. O aplicativo será reiniciado em instantes.';
-      progressFill.style.width = '100%';
-      downloadPercent.textContent = '100%';
-    });
-
-    const unlistenError = await listen('update-error', (event) => {
-      showError(`Falha técnica: ${event.payload}`);
-    });
-
-    await invoke('install_update');
-
-  } catch (error) {
-    showError(error);
-  }
-});
-
-function showError(error) {
-  console.error('Update failed:', error);
-  
-  statusText.innerHTML = `
-    <div class="error-text">
-      Não foi possível concluir a atualização automática.<br>
-      Por favor, baixe a versão mais recente manualmente em: 
-      <span class="download-link" onclick="window.__TAURI__.core.invoke('open_link', { url: 'https://www.reccorder.com.br' })">www.reccorder.com.br</span>
-    </div>
-  `;
-  
-  btnInstall.classList.add('hidden');
-  btnCancel.textContent = 'Fechar';
-  btnCancel.disabled = false;
-  downloadSection.classList.add('hidden');
-}
-
-// Cleanup
-window.addEventListener('unload', () => {
-  if (unlistenData) unlistenData();
-});

@@ -15,6 +15,10 @@ pub struct AppConfig {
     pub selected_mic: Option<String>,
     pub selected_audio_output: Option<String>,
     pub mic_volume: u32, // 0-150, padrão 100
+    pub webcam_enabled: bool,
+    pub webcam_device: Option<String>,   // Nome DirectShow do dispositivo (ex: "Integrated Camera")
+    pub webcam_position: String,          // "top-left" | "top-right" | "bottom-left" | "bottom-right" | "center"
+    pub webcam_size: u32,                 // Percentual do tamanho base (200px). Range: 50–300. Default: 100
 }
 
 impl Default for AppConfig {
@@ -34,6 +38,10 @@ impl Default for AppConfig {
             selected_mic: None,
             selected_audio_output: None,
             mic_volume: 100,
+            webcam_enabled: false,
+            webcam_device: None,
+            webcam_position: String::from("bottom-right"),
+            webcam_size: 100,
         }
     }
 }

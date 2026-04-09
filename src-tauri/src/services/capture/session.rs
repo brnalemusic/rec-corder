@@ -3,7 +3,8 @@ use crate::services::audio::{
     AudioCaptureMode, AudioTrack, NativeAudioCapture,
 };
 use super::ffmpeg::{
-    append_common_inputs, append_encoder_args, resolve_ffmpeg_path,
+    append_common_inputs, append_encoder_args, append_webcam_input,
+    build_webcam_overlay_filter, build_capture_filter, resolve_ffmpeg_path,
     EncoderStrategy, CREATE_NO_WINDOW,
 };
 #[cfg(target_os = "windows")]
@@ -20,6 +21,13 @@ use std::time::Duration;
 pub const MIN_VALID_OUTPUT_BYTES: u64 = 4 * 1024;
 pub const STOP_POLL_INTERVAL_MS: u64 = 100;
 pub const STOP_MAX_WAIT_MS: u64 = 30_000;
+
+/// Configuration for the webcam overlay, passed from the frontend config.
+pub struct WebcamOverlayConfig {
+    pub device_name: String,
+    pub position: String,
+    pub size_percent: u32,
+}
 
 pub struct CaptureSession {
     process: Child,
@@ -147,6 +155,7 @@ impl CaptureSession {
         fps: u32,
         scale_factor: u32,
         strategy_label: &str,
+        webcam_config: Option<WebcamOverlayConfig>,
     ) -> Result<Self, RecorderError> {
         let ffmpeg_path = resolve_ffmpeg_path()?;
         let log_path = build_log_path(&output_path);
@@ -187,6 +196,7 @@ impl CaptureSession {
             fps,
             scale_factor,
             strategy,
+            webcam_config.as_ref(),
         ) {
             Ok(session) => Ok(session),
             Err(err) => {
@@ -210,6 +220,7 @@ impl CaptureSession {
         fps: u32,
         scale_factor: u32,
         strategy: EncoderStrategy,
+        webcam_config: Option<&WebcamOverlayConfig>,
     ) -> Result<Self, RecorderError> {
         let log_file = File::create(&log_path).map_err(|e| {
             RecorderError::CaptureInit(format!(
@@ -264,13 +275,53 @@ impl CaptureSession {
             fullscreen_window,
             fps,
         );
-        append_encoder_args(
-            &mut cmd,
-            strategy,
-            fps,
-            scale_factor,
-            video_output_path == final_output_path,
-        );
+
+        // Add webcam input if configured (must come after screen input, before encoder args)
+        if let Some(wc) = webcam_config {
+            append_webcam_input(&mut cmd, &wc.device_name);
+        }
+
+        // When webcam is active, we use -filter_complex instead of -vf
+        // to compose the overlay. Otherwise, use the standard encoder args.
+        if let Some(wc) = webcam_config {
+            let pixel_format = match strategy {
+                EncoderStrategy::AmdAmf => "nv12",
+                _ => "yuv420p",
+            };
+            let base_vf = build_capture_filter(scale_factor, fps, pixel_format);
+            let filter_complex = build_webcam_overlay_filter(&base_vf, &wc.position, wc.size_percent);
+
+            cmd.args(["-filter_complex", &filter_complex, "-map", "[out]"]);
+
+            // Encoder codec and quality settings (without -vf, which is in filter_complex)
+            match strategy {
+                EncoderStrategy::AmdAmf => {
+                    cmd.args(["-c:v", "h264_amf", "-usage", "lowlatency", "-quality", "speed", "-rc", "cbr", "-b:v", "5M", "-pix_fmt", "nv12"]);
+                }
+                EncoderStrategy::NvidiaNvenc => {
+                    cmd.args(["-c:v", "h264_nvenc", "-preset", "p4", "-tune", "ull", "-rc", "vbr", "-cq", "23", "-pix_fmt", "yuv420p"]);
+                }
+                EncoderStrategy::IntelQsv => {
+                    cmd.args(["-c:v", "h264_qsv", "-preset", "veryfast", "-global_quality", "23", "-pix_fmt", "nv12"]);
+                }
+                EncoderStrategy::SoftwareX264 => {
+                    cmd.args(["-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-pix_fmt", "yuv420p"]);
+                }
+            }
+
+            if video_output_path == final_output_path {
+                cmd.args(["-movflags", "+faststart"]);
+            }
+        } else {
+            append_encoder_args(
+                &mut cmd,
+                strategy,
+                fps,
+                scale_factor,
+                video_output_path == final_output_path,
+            );
+            cmd.args(["-map", "0:v:0"]);
+        }
 
         cmd.arg("-y");
         cmd.arg(video_output_path.to_string_lossy().to_string());
@@ -585,5 +636,16 @@ impl CaptureSession {
                 format!("Detalhes do FFmpeg: {}", log_tail)
             }
         )))
+    }
+
+    pub fn kill(&mut self) {
+        if let Some(capture) = &self.mic_capture {
+            capture.request_stop();
+        }
+        if let Some(capture) = &self.system_audio_capture {
+            capture.request_stop();
+        }
+        let _ = self.process.kill();
+        let _ = self.process.wait();
     }
 }
