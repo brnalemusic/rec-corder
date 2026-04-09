@@ -35,11 +35,10 @@ jobs:
         id: get_notes
         shell: bash
         run: |
-          {
-            echo 'RELEASE_BODY<<EOF'
-            cat UPDATE.md
-            echo 'EOF'
-          } >> "$GITHUB_OUTPUT"
+          echo "RELEASE_BODY<<EOF" >> "$GITHUB_OUTPUT"
+          cat UPDATE.md >> "$GITHUB_OUTPUT"
+          echo "" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Build and publish
         uses: tauri-apps/tauri-action@v0
