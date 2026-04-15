@@ -101,8 +101,18 @@ pub async fn get_release_notes(app: AppHandle<Wry>, version: String) -> Result<O
     let _ = version; // Mark as used to avoid warnings
     // 1. Tenta ler do diretório de recursos (se estiver empacotado)
     if let Ok(mut resource_path) = app.path().resource_dir() {
+        let up_path = resource_path.join("_up_").join("UPDATE.md");
+        if let Ok(content) = std::fs::read_to_string(&up_path) {
+            return Ok(Some(content));
+        }
+
+        let up_path_lower = resource_path.join("_up_").join("update.md");
+        if let Ok(content) = std::fs::read_to_string(&up_path_lower) {
+            return Ok(Some(content));
+        }
+
         resource_path.push("UPDATE.md");
-        if let Ok(content) = std::fs::read_to_string(resource_path) {
+        if let Ok(content) = std::fs::read_to_string(&resource_path) {
             return Ok(Some(content));
         }
     }
