@@ -5,14 +5,17 @@ use crate::services::audio::{
 use super::ffmpeg::{
     append_common_inputs, append_encoder_args, append_webcam_input,
     build_webcam_overlay_filter, build_capture_filter, resolve_ffmpeg_path,
-    EncoderStrategy, CREATE_NO_WINDOW,
+    EncoderStrategy,
 };
+#[cfg(target_os = "windows")]
+use super::ffmpeg::CREATE_NO_WINDOW;
 #[cfg(target_os = "windows")]
 use super::windows::{
     enumerate_native_monitors, find_fullscreen_window_on_monitor, CaptureGuardWindow,
 };
 use std::fs::{self, File};
 use std::io::Write;
+#[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
@@ -253,7 +256,7 @@ impl CaptureSession {
         };
 
         #[cfg(not(target_os = "windows"))]
-        let (capture_guard, fullscreen_window, selected_hmonitor) = (Ok(None), None, None);
+        let (capture_guard, fullscreen_window, selected_hmonitor): (Result<Option<()>, &'static str>, Option<isize>, Option<isize>) = (Ok(None), None, None);
 
         let capture_guard = capture_guard.map_err(|err| {
             RecorderError::CaptureInit(format!(
@@ -266,6 +269,7 @@ impl CaptureSession {
             start_audio_captures(&final_output_path, mic_device_id, system_audio_device_id)?;
 
         let mut cmd = Command::new(ffmpeg_path);
+        #[cfg(target_os = "windows")]
         cmd.creation_flags(CREATE_NO_WINDOW);
 
         append_common_inputs(
@@ -459,6 +463,7 @@ impl CaptureSession {
         })?;
 
         let mut cmd = Command::new(ffmpeg_path);
+        #[cfg(target_os = "windows")]
         cmd.creation_flags(CREATE_NO_WINDOW);
         cmd.args(["-hide_banner", "-loglevel", "error", "-i"]);
         cmd.arg(self.video_output_path.to_string_lossy().to_string());

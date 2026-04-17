@@ -282,8 +282,8 @@ function bindEvents() {
     const { invoke } = window.__TAURI__.core;
     const appWindow = getCurrentWindow();
     appWindow.onCloseRequested(async (event) => {
+      event.preventDefault();
       if (isRecording) {
-        event.preventDefault();
         if (dom.exitModalBackdrop) {
           dom.exitModalBackdrop.classList.remove('hidden');
         }

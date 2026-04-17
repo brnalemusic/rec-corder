@@ -467,33 +467,110 @@ mod platform {
 #[cfg(not(target_os = "windows"))]
 mod platform {
     use super::*;
+    use std::process::{Command, Stdio};
+    use crate::services::capture::ffmpeg::resolve_ffmpeg_path;
 
     pub fn list_microphones() -> Result<Vec<AudioDeviceInfo>, RecorderError> {
-        Err(RecorderError::AudioInit(
-            "A enumeracao nativa de audio foi implementada apenas para Windows".into(),
-        ))
+        Ok(vec![AudioDeviceInfo {
+            id: "default".to_string(),
+            name: "Microfone Padrão (PulseAudio)".to_string(),
+            is_default: true,
+        }])
     }
 
     pub fn list_outputs() -> Result<Vec<AudioDeviceInfo>, RecorderError> {
-        Err(RecorderError::AudioInit(
-            "A enumeracao nativa de audio foi implementada apenas para Windows".into(),
-        ))
+        Ok(vec![AudioDeviceInfo {
+            id: "default".to_string(),
+            name: "Áudio do Sistema Padrão (PulseAudio)".to_string(),
+            is_default: true,
+        }])
     }
 
     pub fn capture_audio_thread(
-        _device_id: String,
+        device_id: String,
         mode: AudioCaptureMode,
-        _output_path: PathBuf,
-        _stop_flag: Arc<AtomicBool>,
+        output_path: PathBuf,
+        stop_flag: Arc<AtomicBool>,
         init_tx: mpsc::SyncSender<Result<AudioTrack, String>>,
     ) -> Result<AudioTrack, RecorderError> {
-        let _ = init_tx.send(Err(format!(
-            "A captura de {} so esta disponivel no Windows",
-            mode.label()
-        )));
-        Err(RecorderError::AudioInit(
-            "Captura de audio nativa indisponivel nesta plataforma".into(),
-        ))
+        let ffmpeg_path = match resolve_ffmpeg_path() {
+            Ok(p) => p,
+            Err(e) => {
+                let _ = init_tx.send(Err(format!("FFmpeg nao encontrado: {}", e)));
+                return Err(RecorderError::AudioInit("FFmpeg nao encontrado".into()));
+            }
+        };
+
+        let mut pulse_input = device_id.clone();
+        if pulse_input == "default" || pulse_input.is_empty() {
+            match mode {
+                AudioCaptureMode::Microphone => pulse_input = "default".into(),
+                AudioCaptureMode::SystemLoopback => {
+                    // Tenta descobrir o monitor do sink padrao via pactl
+                    if let Ok(output) = Command::new("sh").args(["-c", "pactl info | awk '/Default Sink:/ {print $3\".monitor\"}'"]).output() {
+                        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                        if !stdout.is_empty() {
+                            pulse_input = stdout;
+                        } else {
+                            pulse_input = "default".into();
+                        }
+                    } else {
+                        pulse_input = "default".into();
+                    }
+                }
+            }
+        }
+
+        let mut cmd = Command::new(ffmpeg_path);
+        cmd.args([
+            "-f", "pulse",
+            "-i", &pulse_input,
+            "-f", "s16le",
+            "-acodec", "pcm_s16le",
+            "-ar", "48000",
+            "-ac", "2",
+            "-y",
+        ]);
+        cmd.arg(&output_path);
+        cmd.stdout(Stdio::null());
+        cmd.stderr(Stdio::null());
+
+        let mut child = match cmd.spawn() {
+            Ok(c) => c,
+            Err(e) => {
+                let _ = init_tx.send(Err(format!("Falha ao iniciar FFmpeg pulse: {}", e)));
+                return Err(RecorderError::AudioInit("Falha ao iniciar ffmpeg".into()));
+            }
+        };
+
+        let track = AudioTrack {
+            path: output_path.clone(),
+            sample_format: AudioSampleFormat::I16,
+            sample_rate: 48000,
+            channels: 2,
+        };
+
+        let _ = init_tx.send(Ok(track.clone()));
+
+        loop {
+            if stop_flag.load(Ordering::Relaxed) {
+                // Envia q pra fechar graciosamente o pcm
+                use std::io::Write;
+                if let Some(mut stdin) = child.stdin.take() {
+                    let _ = stdin.write_all(b"q\n");
+                }
+                thread::sleep(Duration::from_millis(100));
+                let _ = child.kill();
+                let _ = child.wait();
+                break;
+            }
+            if let Ok(Some(_)) = child.try_wait() {
+                break;
+            }
+            thread::sleep(Duration::from_millis(50));
+        }
+
+        Ok(track)
     }
 }
 

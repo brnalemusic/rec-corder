@@ -11,6 +11,36 @@ use state::AppState;
 use commands::updater::{self, PendingUpdate};
 use tauri::Manager;
 
+#[cfg(all(debug_assertions, target_os = "linux"))]
+fn setup_dev_desktop_file() {
+    use std::fs;
+    use std::path::PathBuf;
+    
+    if let Ok(home) = std::env::var("HOME") {
+        let apps_dir = PathBuf::from(home).join(".local/share/applications");
+        let _ = fs::create_dir_all(&apps_dir);
+        
+        if let Ok(current_dir) = std::env::current_dir() {
+            let icon_path = current_dir.join("icons/icon.png");
+            let exec_path = std::env::current_exe().unwrap_or_default();
+            
+            let content = format!(
+                "[Desktop Entry]\n\
+                Name=Rec Corder (Dev)\n\
+                Exec=\"{}\"\n\
+                Icon={}\n\
+                Type=Application\n\
+                Terminal=false\n",
+                exec_path.display(),
+                icon_path.display()
+            );
+            
+            let _ = fs::write(apps_dir.join("rec-corder.desktop"), &content);
+            let _ = fs::write(apps_dir.join("com.reccorder.app.desktop"), &content);
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -19,6 +49,9 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|_app| {
+            #[cfg(all(debug_assertions, target_os = "linux"))]
+            setup_dev_desktop_file();
+            
             Ok(())
         })
         .manage(AppState::new())
@@ -27,8 +60,11 @@ pub fn run() {
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 if window.label() == "settings" {
-                    let _ = window.hide();
-                    api.prevent_close();
+                    #[cfg(target_os = "windows")]
+                    {
+                        let _ = window.hide();
+                        api.prevent_close();
+                    }
                 }
             }
         })

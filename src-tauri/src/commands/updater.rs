@@ -75,7 +75,6 @@ pub async fn show_updater(app: AppHandle<Wry>, version: String, body: Option<Str
         .decorations(true)
         .center()
         .always_on_top(true)
-        .visible(false) // Inicia oculta
         .build()
         .map_err(|e| e.to_string())?;
 
@@ -154,7 +153,6 @@ pub async fn show_release_notes(app: AppHandle<Wry>) -> Result<(), String> {
         .decorations(true)
         .center()
         .always_on_top(true)
-        .visible(false)
         .build()
         .map_err(|e| e.to_string())?;
 
@@ -164,7 +162,6 @@ pub async fn show_release_notes(app: AppHandle<Wry>) -> Result<(), String> {
         });
 
         // A janela agora busca os dados sozinha via comandos quando carrega
-        let _ = window.show();
         let _ = window.set_focus();
     }
     Ok(())

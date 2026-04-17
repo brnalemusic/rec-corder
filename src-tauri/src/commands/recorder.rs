@@ -172,6 +172,21 @@ pub fn finish_splash(app: AppHandle) -> Result<(), String> {
     if let Some(main_window) = app.get_webview_window("main") {
         main_window.show().map_err(|e| e.to_string())?;
         main_window.set_focus().map_err(|e| e.to_string())?;
+    } else {
+        let _ = tauri::WebviewWindowBuilder::new(
+            &app,
+            "main",
+            tauri::WebviewUrl::App("index.html".into()),
+        )
+        .title("Rec Corder")
+        .inner_size(380.0, 730.0)
+        .min_inner_size(360.0, 640.0)
+        .resizable(true)
+        .decorations(true)
+        .transparent(false)
+        .center()
+        .build()
+        .map_err(|e| e.to_string())?;
     }
     if let Some(splash_window) = app.get_webview_window("splash") {
         splash_window.close().map_err(|e| e.to_string())?;
@@ -337,15 +352,39 @@ pub fn check_crash_recovery(state: State<'_, AppState>) -> Option<String> {
 #[tauri::command]
 pub async fn list_cameras() -> Result<Vec<CameraInfo>, String> {
     use std::process::{Command, Stdio};
+    #[cfg(target_os = "windows")]
     use std::os::windows::process::CommandExt;
+    #[cfg(target_os = "windows")]
     use super::super::services::capture::ffmpeg::CREATE_NO_WINDOW;
 
     let mut cameras = Vec::new();
 
+    #[cfg(not(target_os = "windows"))]
+    {
+        if let Ok(entries) = std::fs::read_dir("/dev") {
+            let mut devices: Vec<_> = entries.filter_map(Result::ok)
+                .filter(|e| e.file_name().to_string_lossy().starts_with("video"))
+                .collect();
+            devices.sort_by_key(|e| e.file_name());
+            for entry in devices {
+                if let Ok(name) = entry.file_name().into_string() {
+                    cameras.push(CameraInfo {
+                        id: format!("/dev/{}", name),
+                        name: format!("Camera {}", name),
+                    });
+                }
+            }
+        }
+        return Ok(cameras);
+    }
+
     // Tenta usar FFmpeg primeiro
     if let Ok(ffmpeg_path) = resolve_ffmpeg_path() {
-        if let Ok(output) = Command::new(ffmpeg_path)
-            .creation_flags(CREATE_NO_WINDOW)
+        let mut cmd = Command::new(ffmpeg_path);
+        #[cfg(target_os = "windows")]
+        cmd.creation_flags(CREATE_NO_WINDOW);
+
+        if let Ok(output) = cmd
             .args(["-list_devices", "true", "-f", "dshow", "-i", "dummy"])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -384,27 +423,31 @@ pub async fn list_cameras() -> Result<Vec<CameraInfo>, String> {
 
     // Fallback: PowerShell if ffmpeg fails or finds no cameras
     if cameras.is_empty() {
-        if let Ok(output) = Command::new("powershell")
-            .creation_flags(CREATE_NO_WINDOW)
-            .args([
+        #[cfg(target_os = "windows")]
+        {
+            let mut cmd = Command::new("powershell");
+            cmd.creation_flags(CREATE_NO_WINDOW);
+            if let Ok(output) = cmd
+                .args([
                 "-NoProfile",
                 "-Command",
                 "Get-PnpDevice -PresentOnly | Where-Object { $_.PNPClass -eq 'Camera' -or $_.PNPClass -eq 'Image' } | Select-Object -ExpandProperty FriendlyName"
             ])
             .output()
-        {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            for line in stdout.lines() {
-                let name = line.trim().to_string();
-                if !name.is_empty() {
-                    cameras.push(CameraInfo {
-                        id: name.clone(),
-                        name,
-                    });
+            {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                for line in stdout.lines() {
+                    let name = line.trim().to_string();
+                    if !name.is_empty() {
+                        cameras.push(CameraInfo {
+                            id: name.clone(),
+                            name,
+                        });
+                    }
                 }
             }
         }
     }
-
+    
     Ok(cameras)
 }

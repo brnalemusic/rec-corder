@@ -1,8 +1,10 @@
 use crate::errors::RecorderError;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+#[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 
+#[cfg(target_os = "windows")]
 pub const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -46,18 +48,34 @@ pub fn candidate_ffmpeg_paths() -> Vec<PathBuf> {
         candidates.push(PathBuf::from(local_app_data).join("RecCorder\\ffmpeg.exe"));
     }
 
+    #[cfg(target_os = "linux")]
+    {
+        candidates.push(PathBuf::from("/usr/bin/ffmpeg"));
+        candidates.push(PathBuf::from("/snap/bin/ffmpeg"));
+        candidates.push(PathBuf::from("/usr/local/bin/ffmpeg"));
+        if let Some(home) = std::env::var_os("HOME") {
+            candidates.push(PathBuf::from(home).join(".local/bin/ffmpeg"));
+        }
+    }
+
     if let Ok(exe_path) = std::env::current_exe() {
         if let Some(exe_dir) = exe_path.parent() {
-            candidates.push(exe_dir.join("ffmpeg-x86_64-pc-windows-msvc.exe")); // Sidecar embutido
+            candidates.push(exe_dir.join("ffmpeg-x86_64-pc-windows-msvc.exe"));
+            candidates.push(exe_dir.join("ffmpeg-x86_64-unknown-linux-gnu"));
             candidates.push(exe_dir.join("ffmpeg.exe"));
+            candidates.push(exe_dir.join("ffmpeg"));
 
             if let Some(target_dir) = exe_dir.parent() {
                 candidates.push(target_dir.join("ffmpeg-x86_64-pc-windows-msvc.exe"));
+                candidates.push(target_dir.join("ffmpeg-x86_64-unknown-linux-gnu"));
                 candidates.push(target_dir.join("ffmpeg.exe"));
+                candidates.push(target_dir.join("ffmpeg"));
 
                 if let Some(project_dir) = target_dir.parent() {
                     candidates.push(project_dir.join("bin").join("ffmpeg-x86_64-pc-windows-msvc.exe"));
+                    candidates.push(project_dir.join("bin").join("ffmpeg-x86_64-unknown-linux-gnu"));
                     candidates.push(project_dir.join("ffmpeg.exe"));
+                    candidates.push(project_dir.join("ffmpeg"));
                 }
             }
         }
@@ -116,10 +134,13 @@ pub fn resolve_ffmpeg_path() -> Result<PathBuf, RecorderError> {
         searched.push(candidate_str);
     }
 
-    Err(RecorderError::CaptureInit(format!(
-        "FFmpeg nao foi encontrado. Coloque-o em C:\\Users\\<nome_usuario>\\AppData\\Local\\RecCorder\\ffmpeg.exe ou adicione-o ao PATH. Você também pode definir REC_CORDER_FFMPEG_PATH. Locais verificados: {}",
-        searched.join(" | ")
-    )))
+    let error_msg = if cfg!(target_os = "windows") {
+        format!("FFmpeg nao foi encontrado. Coloque-o em C:\\Users\\<nome_usuario>\\AppData\\Local\\RecCorder\\ffmpeg.exe ou adicione-o ao PATH. Locais verificados: {}", searched.join(" | "))
+    } else {
+        format!("FFmpeg nao foi encontrado. Instale-o via 'sudo apt install ffmpeg' ou coloque-o no PATH. Locais verificados: {}", searched.join(" | "))
+    };
+
+    Err(RecorderError::CaptureInit(error_msg))
 }
 
 pub fn build_video_input(
@@ -128,12 +149,23 @@ pub fn build_video_input(
     window_handle: Option<isize>,
     fps: u32,
 ) -> String {
-    if let Some(hwnd) = window_handle {
-        format!("gfxcapture=window_handle={:#x}:max_framerate={fps}:capture_cursor=1:display_border=0", hwnd)
-    } else if let Some(hmonitor) = monitor_handle {
-        format!("gfxcapture=hmonitor={hmonitor}:max_framerate={fps}:capture_cursor=1:display_border=0")
-    } else {
-        format!("gfxcapture=monitor_idx={monitor_index}:max_framerate={fps}:capture_cursor=1:display_border=0")
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(hwnd) = window_handle {
+            format!("gfxcapture=window_handle={:#x}:max_framerate={fps}:capture_cursor=1:display_border=0", hwnd)
+        } else if let Some(hmonitor) = monitor_handle {
+            format!("gfxcapture=hmonitor={hmonitor}:max_framerate={fps}:capture_cursor=1:display_border=0")
+        } else {
+            format!("gfxcapture=monitor_idx={monitor_index}:max_framerate={fps}:capture_cursor=1:display_border=0")
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        // No Linux, assumimos x11grab para tela (monitor 0)
+        let _ = monitor_handle;
+        let _ = monitor_index;
+        let _ = window_handle;
+        format!(":0.0")
     }
 }
 
@@ -145,18 +177,36 @@ pub fn append_common_inputs(
     fps: u32,
 ) {
     let video_input = build_video_input(monitor_handle, monitor_index, window_handle, fps);
-    cmd.args(["-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i"]);
-    cmd.arg(video_input);
+    
+    #[cfg(target_os = "windows")]
+    cmd.args(["-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", &video_input]);
+
+    #[cfg(not(target_os = "windows"))]
+    cmd.args(["-hide_banner", "-loglevel", "error", "-f", "x11grab", "-framerate", &fps.to_string(), "-i", &video_input]);
 }
 
 pub fn build_capture_filter(scale_factor: u32, fps: u32, pixel_format: &str) -> String {
-    if scale_factor >= 100 {
-        format!("hwdownload,format=bgra,fps={fps},format={pixel_format}")
-    } else {
-        let f = scale_factor as f32 / 100.0;
-        format!(
-            "hwdownload,format=bgra,fps={fps},scale=trunc(iw*{f}/2)*2:trunc(ih*{f}/2)*2,format={pixel_format}"
-        )
+    #[cfg(target_os = "windows")]
+    {
+        if scale_factor >= 100 {
+            format!("hwdownload,format=bgra,fps={fps},format={pixel_format}")
+        } else {
+            let f = scale_factor as f32 / 100.0;
+            format!(
+                "hwdownload,format=bgra,fps={fps},scale=trunc(iw*{f}/2)*2:trunc(ih*{f}/2)*2,format={pixel_format}"
+            )
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        if scale_factor >= 100 {
+            format!("fps={fps},format={pixel_format}")
+        } else {
+            let f = scale_factor as f32 / 100.0;
+            format!(
+                "fps={fps},scale=trunc(iw*{f}/2)*2:trunc(ih*{f}/2)*2,format={pixel_format}"
+            )
+        }
     }
 }
 
@@ -244,13 +294,26 @@ pub fn append_encoder_args(
 
 /// Add a DirectShow webcam as the second video input to the FFmpeg command.
 pub fn append_webcam_input(cmd: &mut Command, device_name: &str) {
-    cmd.args([
-        "-f", "dshow",
-        "-video_size", "640x480",
-        "-framerate", "30",
-        "-i",
-    ]);
-    cmd.arg(format!("video={}", device_name));
+    #[cfg(target_os = "windows")]
+    {
+        cmd.args([
+            "-f", "dshow",
+            "-video_size", "640x480",
+            "-framerate", "30",
+            "-i",
+        ]);
+        cmd.arg(format!("video={}", device_name));
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        cmd.args([
+            "-f", "v4l2",
+            "-video_size", "640x480",
+            "-framerate", "30",
+            "-i",
+        ]);
+        cmd.arg(device_name);
+    }
 }
 
 /// Build the video filter string with webcam overlay composited onto the screen capture.
@@ -287,19 +350,35 @@ pub fn test_environment() -> String {
         Err(_) => return EncoderStrategy::SoftwareX264.label().to_string(),
     };
 
-    let strategies = [
-        EncoderStrategy::NvidiaNvenc,
-        EncoderStrategy::AmdAmf,
-        EncoderStrategy::IntelQsv,
+    #[derive(Debug, Clone, Copy)]
+    enum TestTarget {
+        Strategy(EncoderStrategy),
+        Raw(&'static str),
+    }
+
+    let mut targets = vec![
+        TestTarget::Strategy(EncoderStrategy::NvidiaNvenc),
+        TestTarget::Strategy(EncoderStrategy::AmdAmf),
+        TestTarget::Strategy(EncoderStrategy::IntelQsv),
     ];
 
-    for strategy in strategies {
+    #[cfg(target_os = "linux")]
+    targets.push(TestTarget::Raw("h264_vaapi"));
+
+    for target in targets {
+        let label = match target {
+            TestTarget::Strategy(s) => s.label(),
+            TestTarget::Raw(r) => r,
+        };
+
         let mut cmd = Command::new(&ffmpeg_path);
+        #[cfg(target_os = "windows")]
         cmd.creation_flags(CREATE_NO_WINDOW);
+        
         cmd.args([
             "-f", "lavfi",
             "-i", "nullsrc=s=128x128:d=0.1",
-            "-c:v", strategy.label(),
+            "-c:v", label,
             "-f", "null",
             "-"
         ]);
@@ -309,8 +388,8 @@ pub fn test_environment() -> String {
         if let Ok(mut child) = cmd.spawn() {
             if let Ok(status) = child.wait() {
                 if status.success() {
-                    println!("Hardware test successful for {}", strategy.label());
-                    return strategy.label().to_string();
+                    println!("Hardware test successful for {}", label);
+                    return label.to_string();
                 }
             }
         }
@@ -325,26 +404,34 @@ mod tests {
     use super::{build_capture_filter, build_video_input};
 
     #[test]
-    fn build_video_input_uses_supported_gfxcapture_options() {
-        assert_eq!(
-            build_video_input(None, 0, None, 60),
-            "gfxcapture=monitor_idx=0:max_framerate=60:capture_cursor=1:display_border=0"
-        );
-        assert_eq!(
-            build_video_input(None, 0, Some(0x1234), 60),
-            "gfxcapture=window_handle=0x1234:max_framerate=60:capture_cursor=1:display_border=0"
-        );
-        assert_eq!(
-            build_video_input(Some(456), 0, None, 60),
-            "gfxcapture=hmonitor=456:max_framerate=60:capture_cursor=1:display_border=0"
-        );
+    fn build_video_input_uses_correct_platform_string() {
+        #[cfg(target_os = "windows")]
+        {
+            assert_eq!(
+                build_video_input(None, 0, None, 60),
+                "gfxcapture=monitor_idx=0:max_framerate=60:capture_cursor=1:display_border=0"
+            );
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            assert_eq!(
+                build_video_input(None, 0, None, 60),
+                ":0.0"
+            );
+        }
     }
 
     #[test]
     fn build_capture_filter_forces_constant_fps_before_encoding() {
+        #[cfg(target_os = "windows")]
         assert_eq!(
             build_capture_filter(100, 60, "nv12"),
             "hwdownload,format=bgra,fps=60,format=nv12"
+        );
+        #[cfg(not(target_os = "windows"))]
+        assert_eq!(
+            build_capture_filter(100, 60, "nv12"),
+            "fps=60,format=nv12"
         );
     }
 }

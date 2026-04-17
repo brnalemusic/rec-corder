@@ -1,6 +1,6 @@
 [package]
 name = "rec-corder"
-version = "0.3.1"
+version = "1.0.0-beta.1"
 description = "Ultra-light screen recorder"
 authors = ["Breno"]
 edition = "2021"
@@ -26,6 +26,8 @@ parking_lot = "0.12"
 regex = "1"
 dirs-next = "2.0"
 reqwest = { version = "0.11", features = ["stream"] }
+semver = "1.0.28"
+[target.'cfg(windows)'.dependencies]
 windows = { version = "0.58", features = [
   "Win32_Devices_FunctionDiscovery",
   "Win32_Foundation",

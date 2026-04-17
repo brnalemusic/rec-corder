@@ -386,9 +386,11 @@ pub fn list_monitors() -> Result<Vec<MonitorInfo>, RecorderError> {
 
     #[cfg(not(target_os = "windows"))]
     {
-        Err(RecorderError::CaptureInit(
-            "A captura de tela so esta disponivel no Windows".into(),
-        ))
+        Ok(vec![MonitorInfo {
+            index: 0,
+            name: "Tela Principal (X11)".to_string(),
+            is_primary: true,
+        }])
     }
 }
 
