@@ -14,7 +14,7 @@ pub struct FfmpegStatus {
     pub path: Option<String>,
 }
 
-fn check_gfxcapture(ffmpeg_path: &PathBuf) -> bool {
+fn verify_ffmpeg_binary(ffmpeg_path: &PathBuf) -> bool {
     #[cfg(target_os = "windows")]
     {
         let mut cmd = Command::new(ffmpeg_path);
@@ -35,16 +35,21 @@ fn check_gfxcapture(ffmpeg_path: &PathBuf) -> bool {
     }
     #[cfg(not(target_os = "windows"))]
     {
-        let _ = ffmpeg_path;
-        true
+        let mut cmd = Command::new(ffmpeg_path);
+        cmd.arg("-version");
+        if let Ok(output) = cmd.output() {
+            output.status.success()
+        } else {
+            false
+        }
     }
 }
 
-/// Verifica se o FFmpeg está disponível no sistema e possui o filtro gfxcapture
+/// Verifica se o FFmpeg está disponível no sistema e possui os filtros necessários
 #[tauri::command]
 pub fn check_ffmpeg() -> FfmpegStatus {
     for candidate in candidate_ffmpeg_paths() {
-        if candidate.is_file() && check_gfxcapture(&candidate) {
+        if candidate.is_file() && verify_ffmpeg_binary(&candidate) {
             return FfmpegStatus {
                 found: true,
                 path: Some(candidate.to_string_lossy().to_string()),

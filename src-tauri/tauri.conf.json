@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Rec Corder",
-  "version": "1.0.0-beta.1",
+  "version": "1.0.0-beta.2",
   "identifier": "com.reccorder.app",
   "build": {
     "beforeBuildCommand": {
@@ -38,8 +38,20 @@
       "deb",
       "appimage"
     ],
+    "linux": {
+      "deb": {
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libgtk-3-0",
+          "libayatana-appindicator3-1"
+        ],
+        "files": {
+          "/usr/share/metainfo/com.reccorder.app.metainfo.xml": "com.reccorder.app.metainfo.xml"
+        }
+      }
+    },
     "externalBin": [
-      "bin/ffmpeg"
+      "bin/rec-corder-ffmpeg"
     ],
     "resources": [
       "../UPDATE.md"
@@ -63,7 +75,12 @@
         "type": "offlineInstaller",
         "silent": true
       }
-    }
+    },
+    "license": "MIT",
+    "homepage": "https://reccorder.com.br",
+    "shortDescription": "Ultra-light screen recorder",
+    "longDescription": "# 🎬 Rec Corder — Gravador de Tela para Windows e Linux\n\nO **Rec Corder** foi desenvolvido para ser o gravador de tela mais \"invisível\" que você já usou. \n\nEnquanto gravadores tradicionais consomem sua CPU e podem causar engasgos (stuttering) durante o jogo ou trabalho, o Rec Corder utiliza o poder bruto da sua placa de vídeo (Hardware Acceleration) e uma arquitetura híbrida inteligente para garantir que o desempenho do seu PC permaneça intocado enquanto você captura tudo o que acontece na tela.\n\n---\n\n### ✨ O que o torna especial?\n\n- **Prioridade ao Usuário:** O Rec Corder é \"egoísta\" com o hardware — no bom sentido. Ele consome o mínimo de CPU e RAM durante a gravação para que seu jogo ou software pesado rode liso.\n- **Processamento Transparente:** Quando você clica em \"Parar\", o app entra no estado de **Processando...**. É nesse momento que ele combina o vídeo capturado com o áudio cristalino. Esse pequeno intervalo ao final é o \"segredo\" por trás da performance extrema durante a gravação.\n- **Zero Lag Real:** Nada de interfaces pesadas. Tudo aqui foi escrito em Vanilla JS e Rust (Tauri) para abrir instantaneamente e responder ao seu clique sem pensar duas vezes.\n- **Segurança de Dados:** Se o seu PC desligar ou o Windows travar, o Rec Corder possui um **Watchdog (Cão de Guarda)** que tenta recuperar sua gravação na próxima vez que o app for aberto.\n\n---\n\n### 🚀 Principais Recursos\n\n- 🎮 **Aceleração por Hardware:** Suporte nativo para **NVENC (NVIDIA)**, **AMF (AMD)**, **QuickSync (Intel)** e **VAAPI (Linux)**.\n- 🔊 **Áudio de Alta Fidelidade:** Captura nativa via Windows WASAPI ou Linux PulseAudio, garantindo o som do sistema e microfone sem latência.\n- 📐 **Escala Customizável:** Reduza a imagem (80%, 60%) para poupar gigabytes de espaço mantendo a fluidez.\n- 📺 **60 FPS Estável:** Gravações fluidas ideais para gameplay e tutoriais profissionais.\n- 📁 **Pasta de Destino Rápida:** Mude o local de salvamento em um clique direto na interface.\n\n---\n\n### 📦 Como Instalar (Sem Estresse)\n\nNão precisa saber programar para usar! Siga estes passos simples:\n\n1. Acesse a aba [**Releases**](https://github.com/brnalemusic/rec-corder/releases) (lado direito deste repositório).\n2. Baixe a versão para o seu sistema:\n   - **Windows:** Baixe o arquivo `.exe`.\n   - **Linux:** Baixe o arquivo `.deb` (Debian/Ubuntu).\n3. Execute o instalador. Ele configurará automaticamente todos os componentes necessários (incluindo o FFmpeg embutido).\n4. No Windows: Se mostrar o aviso do SmartScreen, clique em **\"Mais informações\"** e depois em **\"Executar assim mesmo\"**.\n\n---\n\n### 🛠️ Especificações Técnicas (Para Curiosos)\n\nO Rec Corder é construído com tecnologia de ponta:\n- **Core:** [Rust](https://www.rust-lang.org/) + [Tauri v2](https://v2.tauri.app/) (Segurança e Baixo Consumo).\n- **VÍDEO:** \n  - **Windows:** [Windows Graphics Capture (WGC)](https://learn.microsoft.com/en-us/windows/uwp/audio-video-camera/screen-capture) via FFmpeg.\n  - **Linux:** X11 Grab via FFmpeg.\n- **Áudio:** \n  - **Windows:** WASAPI PCM.\n  - **Linux:** PulseAudio PCM.\n- **Frontend:** Vanilla JS e Modern CSS (Sem frameworks pesados).\n\n---\n\n### 🤝 Contribuições\n\nEste projeto é **100% open-source**. Se você encontrar um bug ou tiver uma ideia de recurso, abra uma **Issue** ou envie um **Pull Request**.\n\n<div align=\"center\">\n  <sub>Criado com 🧡 para a comunidade criativa. v1.0.0-beta.2</sub>\n</div>\n",
+    "publisher": "Breno"
   },
   "plugins": {
     "updater": {

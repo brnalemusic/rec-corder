@@ -366,7 +366,17 @@ pub fn resolve_monitor_index(preferred_index: usize) -> Result<usize, RecorderEr
 
 #[cfg(not(target_os = "windows"))]
 pub fn resolve_monitor_index(preferred_index: usize) -> Result<usize, RecorderError> {
-    Ok(preferred_index)
+    let monitors = crate::services::capture::linux::enumerate_linux_monitors()?;
+
+    if monitors.iter().any(|monitor| monitor.index == preferred_index) {
+        return Ok(preferred_index);
+    }
+
+    Ok(monitors
+        .iter()
+        .find(|monitor| monitor.is_primary)
+        .map(|monitor| monitor.index)
+        .unwrap_or(0))
 }
 
 pub fn list_monitors() -> Result<Vec<MonitorInfo>, RecorderError> {
@@ -386,11 +396,16 @@ pub fn list_monitors() -> Result<Vec<MonitorInfo>, RecorderError> {
 
     #[cfg(not(target_os = "windows"))]
     {
-        Ok(vec![MonitorInfo {
-            index: 0,
-            name: "Tela Principal (X11)".to_string(),
-            is_primary: true,
-        }])
+        return crate::services::capture::linux::enumerate_linux_monitors().map(|monitors| {
+            monitors
+                .into_iter()
+                .map(|monitor| MonitorInfo {
+                    index: monitor.index,
+                    name: monitor.name,
+                    is_primary: monitor.is_primary,
+                })
+                .collect()
+        });
     }
 }
 

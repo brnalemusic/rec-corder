@@ -471,6 +471,16 @@ mod platform {
     use crate::services::capture::ffmpeg::resolve_ffmpeg_path;
 
     pub fn list_microphones() -> Result<Vec<AudioDeviceInfo>, RecorderError> {
+        let wpctl_devices = crate::services::capture::linux::list_wpctl_audio_devices(true);
+        if !wpctl_devices.is_empty() {
+            return Ok(wpctl_devices.into_iter().map(|d| AudioDeviceInfo {
+                id: d.id,
+                name: d.name,
+                is_default: d.is_default,
+            }).collect());
+        }
+
+        // Fallback
         Ok(vec![AudioDeviceInfo {
             id: "default".to_string(),
             name: "Microfone Padrão (PulseAudio)".to_string(),
@@ -479,6 +489,16 @@ mod platform {
     }
 
     pub fn list_outputs() -> Result<Vec<AudioDeviceInfo>, RecorderError> {
+        let wpctl_devices = crate::services::capture::linux::list_wpctl_audio_devices(false);
+        if !wpctl_devices.is_empty() {
+            return Ok(wpctl_devices.into_iter().map(|d| AudioDeviceInfo {
+                id: d.id,
+                name: d.name,
+                is_default: d.is_default,
+            }).collect());
+        }
+
+        // Fallback
         Ok(vec![AudioDeviceInfo {
             id: "default".to_string(),
             name: "Áudio do Sistema Padrão (PulseAudio)".to_string(),

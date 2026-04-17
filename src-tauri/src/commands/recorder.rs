@@ -361,6 +361,15 @@ pub async fn list_cameras() -> Result<Vec<CameraInfo>, String> {
 
     #[cfg(not(target_os = "windows"))]
     {
+        let wpctl_cameras = crate::services::capture::linux::list_wpctl_cameras();
+        if !wpctl_cameras.is_empty() {
+            return Ok(wpctl_cameras.into_iter().map(|c| CameraInfo {
+                id: c.id,
+                name: c.name,
+            }).collect());
+        }
+
+        // Fallback: /dev/video* scan
         if let Ok(entries) = std::fs::read_dir("/dev") {
             let mut devices: Vec<_> = entries.filter_map(Result::ok)
                 .filter(|e| e.file_name().to_string_lossy().starts_with("video"))

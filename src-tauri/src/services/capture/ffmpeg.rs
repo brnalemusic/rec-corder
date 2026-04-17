@@ -60,22 +60,59 @@ pub fn candidate_ffmpeg_paths() -> Vec<PathBuf> {
 
     if let Ok(exe_path) = std::env::current_exe() {
         if let Some(exe_dir) = exe_path.parent() {
-            candidates.push(exe_dir.join("ffmpeg-x86_64-pc-windows-msvc.exe"));
-            candidates.push(exe_dir.join("ffmpeg-x86_64-unknown-linux-gnu"));
-            candidates.push(exe_dir.join("ffmpeg.exe"));
-            candidates.push(exe_dir.join("ffmpeg"));
+            let prefixes = ["rec-corder-ffmpeg", "ffmpeg"];
+            for prefix in prefixes {
+                #[cfg(target_os = "windows")]
+                {
+                    candidates.push(exe_dir.join(format!("{}-x86_64-pc-windows-msvc.exe", prefix)));
+                    candidates.push(exe_dir.join(format!("{}.exe", prefix)));
+                    candidates.push(exe_dir.join(format!("{}-x86_64-unknown-linux-gnu", prefix)));
+                    candidates.push(exe_dir.join(prefix));
+                }
+                #[cfg(not(target_os = "windows"))]
+                {
+                    candidates.push(exe_dir.join(format!("{}-x86_64-unknown-linux-gnu", prefix)));
+                    candidates.push(exe_dir.join(prefix));
+                    candidates.push(exe_dir.join(format!("{}-x86_64-pc-windows-msvc.exe", prefix)));
+                    candidates.push(exe_dir.join(format!("{}.exe", prefix)));
+                }
+            }
 
             if let Some(target_dir) = exe_dir.parent() {
-                candidates.push(target_dir.join("ffmpeg-x86_64-pc-windows-msvc.exe"));
-                candidates.push(target_dir.join("ffmpeg-x86_64-unknown-linux-gnu"));
-                candidates.push(target_dir.join("ffmpeg.exe"));
-                candidates.push(target_dir.join("ffmpeg"));
+                for prefix in prefixes {
+                    #[cfg(target_os = "windows")]
+                    {
+                        candidates.push(target_dir.join(format!("{}-x86_64-pc-windows-msvc.exe", prefix)));
+                        candidates.push(target_dir.join(format!("{}.exe", prefix)));
+                        candidates.push(target_dir.join(format!("{}-x86_64-unknown-linux-gnu", prefix)));
+                        candidates.push(target_dir.join(prefix));
+                    }
+                    #[cfg(not(target_os = "windows"))]
+                    {
+                        candidates.push(target_dir.join(format!("{}-x86_64-unknown-linux-gnu", prefix)));
+                        candidates.push(target_dir.join(prefix));
+                        candidates.push(target_dir.join(format!("{}-x86_64-pc-windows-msvc.exe", prefix)));
+                        candidates.push(target_dir.join(format!("{}.exe", prefix)));
+                    }
+                }
 
                 if let Some(project_dir) = target_dir.parent() {
-                    candidates.push(project_dir.join("bin").join("ffmpeg-x86_64-pc-windows-msvc.exe"));
-                    candidates.push(project_dir.join("bin").join("ffmpeg-x86_64-unknown-linux-gnu"));
-                    candidates.push(project_dir.join("ffmpeg.exe"));
-                    candidates.push(project_dir.join("ffmpeg"));
+                    for prefix in prefixes {
+                        #[cfg(target_os = "windows")]
+                        {
+                            candidates.push(project_dir.join("bin").join(format!("{}-x86_64-pc-windows-msvc.exe", prefix)));
+                            candidates.push(project_dir.join(format!("{}.exe", prefix)));
+                            candidates.push(project_dir.join("bin").join(format!("{}-x86_64-unknown-linux-gnu", prefix)));
+                            candidates.push(project_dir.join(prefix));
+                        }
+                        #[cfg(not(target_os = "windows"))]
+                        {
+                            candidates.push(project_dir.join("bin").join(format!("{}-x86_64-unknown-linux-gnu", prefix)));
+                            candidates.push(project_dir.join(prefix));
+                            candidates.push(project_dir.join("bin").join(format!("{}-x86_64-pc-windows-msvc.exe", prefix)));
+                            candidates.push(project_dir.join(format!("{}.exe", prefix)));
+                        }
+                    }
                 }
             }
         }
@@ -161,11 +198,23 @@ pub fn build_video_input(
     }
     #[cfg(not(target_os = "windows"))]
     {
-        // No Linux, assumimos x11grab para tela (monitor 0)
         let _ = monitor_handle;
-        let _ = monitor_index;
         let _ = window_handle;
-        format!(":0.0")
+        
+        let mut x = 0;
+        let mut y = 0;
+        
+        if let Ok(monitors) = crate::services::capture::linux::enumerate_linux_monitors() {
+            if let Some(mon) = monitors.iter().find(|m| m.index == monitor_index) {
+                x = mon.bounds.0;
+                y = mon.bounds.1;
+            } else if let Some(mon) = monitors.first() {
+                x = mon.bounds.0;
+                y = mon.bounds.1;
+            }
+        }
+        
+        format!(":0.0+{},{}", x, y)
     }
 }
 
@@ -182,7 +231,31 @@ pub fn append_common_inputs(
     cmd.args(["-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", &video_input]);
 
     #[cfg(not(target_os = "windows"))]
-    cmd.args(["-hide_banner", "-loglevel", "error", "-f", "x11grab", "-framerate", &fps.to_string(), "-i", &video_input]);
+    {
+        let mut width = 1920;
+        let mut height = 1080;
+        
+        if let Ok(monitors) = crate::services::capture::linux::enumerate_linux_monitors() {
+            if let Some(mon) = monitors.iter().find(|m| m.index == monitor_index) {
+                width = mon.bounds.2;
+                height = mon.bounds.3;
+            } else if let Some(mon) = monitors.first() {
+                width = mon.bounds.2;
+                height = mon.bounds.3;
+            }
+        }
+        
+        let video_size = format!("{}x{}", width, height);
+        
+        // Exemplo: "-video_size 1920x1080 -framerate 30 -i :0.0+0,0"
+        cmd.args([
+            "-hide_banner", "-loglevel", "error", 
+            "-f", "x11grab", 
+            "-video_size", &video_size,
+            "-framerate", &fps.to_string(), 
+            "-i", &video_input
+        ]);
+    }
 }
 
 pub fn build_capture_filter(scale_factor: u32, fps: u32, pixel_format: &str) -> String {
@@ -350,26 +423,14 @@ pub fn test_environment() -> String {
         Err(_) => return EncoderStrategy::SoftwareX264.label().to_string(),
     };
 
-    #[derive(Debug, Clone, Copy)]
-    enum TestTarget {
-        Strategy(EncoderStrategy),
-        Raw(&'static str),
-    }
-
-    let mut targets = vec![
-        TestTarget::Strategy(EncoderStrategy::NvidiaNvenc),
-        TestTarget::Strategy(EncoderStrategy::AmdAmf),
-        TestTarget::Strategy(EncoderStrategy::IntelQsv),
+    let targets = vec![
+        EncoderStrategy::NvidiaNvenc,
+        EncoderStrategy::AmdAmf,
+        EncoderStrategy::IntelQsv,
     ];
 
-    #[cfg(target_os = "linux")]
-    targets.push(TestTarget::Raw("h264_vaapi"));
-
     for target in targets {
-        let label = match target {
-            TestTarget::Strategy(s) => s.label(),
-            TestTarget::Raw(r) => r,
-        };
+        let label = target.label();
 
         let mut cmd = Command::new(&ffmpeg_path);
         #[cfg(target_os = "windows")]
@@ -414,10 +475,8 @@ mod tests {
         }
         #[cfg(not(target_os = "windows"))]
         {
-            assert_eq!(
-                build_video_input(None, 0, None, 60),
-                ":0.0"
-            );
+            let input = build_video_input(None, 0, None, 60);
+            assert!(input.starts_with(":0.0+"));
         }
     }
 
