@@ -22,6 +22,11 @@ build/
 /src-tauri/tauri.log
 **/*.rs.bk
 
+# Checks
+*.txt
+/src-tauri/*.txt
+/src/*.txt
+
 # Sidecars & Binaries
 # WE DO NOT IGNORE FFMPEG BINARIES SO THEY ARE SHIPPED PROPERLY
 !/src-tauri/bin/rec-corder-ffmpeg-*

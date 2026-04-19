@@ -2,8 +2,7 @@
    Rec Corder — Glass & Fire System
    ═══════════════════════════════════════════════════════ */
 
-/* ─── Web Fonts ─── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* ─── Fontes do sistema (app offline, sem dependência de rede) ─── */
 
 /* ─── Design Tokens ─── */
 :root {
@@ -60,6 +59,6 @@
   --transition-slow: 400ms ease-out;
 
   /* Typography - System Native UI */
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-sans: "Segoe UI", Roboto, "Noto Sans", "Liberation Sans", Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, monospace;
 }
