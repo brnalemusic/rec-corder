@@ -1,7 +1,7 @@
 use crate::errors::RecorderError;
+use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use std::os::windows::process::CommandExt;
 
 pub const CREATE_NO_WINDOW: u32 = 0x08000000;
 
@@ -33,6 +33,39 @@ impl EncoderStrategy {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CaptureBackend {
+    DesktopDuplication,
+    GraphicsCapture,
+    GdiGrab,
+}
+
+impl CaptureBackend {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::DesktopDuplication => "ddagrab",
+            Self::GraphicsCapture => "gfxcapture",
+            Self::GdiGrab => "gdigrab",
+        }
+    }
+
+    pub fn requires_hwdownload(self) -> bool {
+        matches!(self, Self::DesktopDuplication | Self::GraphicsCapture)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CaptureInput {
+    pub backend: CaptureBackend,
+    args: Vec<String>,
+}
+
+impl CaptureInput {
+    pub fn apply(&self, cmd: &mut Command) {
+        cmd.args(&self.args);
+    }
+}
+
 pub fn candidate_ffmpeg_paths() -> Vec<PathBuf> {
     let mut candidates = Vec::new();
 
@@ -56,7 +89,11 @@ pub fn candidate_ffmpeg_paths() -> Vec<PathBuf> {
                 candidates.push(target_dir.join("ffmpeg.exe"));
 
                 if let Some(project_dir) = target_dir.parent() {
-                    candidates.push(project_dir.join("bin").join("ffmpeg-x86_64-pc-windows-msvc.exe"));
+                    candidates.push(
+                        project_dir
+                            .join("bin")
+                            .join("ffmpeg-x86_64-pc-windows-msvc.exe"),
+                    );
                     candidates.push(project_dir.join("ffmpeg.exe"));
                 }
             }
@@ -128,36 +165,101 @@ pub fn build_video_input(
     window_handle: Option<isize>,
     fps: u32,
 ) -> String {
-    if let Some(hwnd) = window_handle {
-        format!("gfxcapture=window_handle={:#x}:max_framerate={fps}:capture_cursor=1:display_border=0", hwnd)
-    } else if let Some(hmonitor) = monitor_handle {
-        format!("gfxcapture=hmonitor={hmonitor}:max_framerate={fps}:capture_cursor=1:display_border=0")
+    // Prefer capturing the whole monitor (hmonitor) when available. Capturing a
+    // specific window handle can fail for exclusive fullscreen DirectX games,
+    // so prefer the monitor capture for better compatibility with fullscreen apps.
+    if let Some(hmonitor) = monitor_handle {
+        format!(
+            "gfxcapture=hmonitor={hmonitor}:max_framerate={fps}:capture_cursor=1:display_border=0"
+        )
+    } else if let Some(hwnd) = window_handle {
+        format!(
+            "gfxcapture=window_handle={:#x}:max_framerate={fps}:capture_cursor=1:display_border=0",
+            hwnd
+        )
     } else {
         format!("gfxcapture=monitor_idx={monitor_index}:max_framerate={fps}:capture_cursor=1:display_border=0")
     }
 }
 
-pub fn append_common_inputs(
-    cmd: &mut Command,
+pub fn build_gfxcapture_input(
     monitor_handle: Option<isize>,
     monitor_index: usize,
     window_handle: Option<isize>,
     fps: u32,
-) {
-    let video_input = build_video_input(monitor_handle, monitor_index, window_handle, fps);
-    cmd.args(["-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i"]);
-    cmd.arg(video_input);
+) -> CaptureInput {
+    CaptureInput {
+        backend: CaptureBackend::GraphicsCapture,
+        args: vec![
+            "-f".into(),
+            "lavfi".into(),
+            "-i".into(),
+            build_video_input(monitor_handle, monitor_index, window_handle, fps),
+        ],
+    }
 }
 
-pub fn build_capture_filter(scale_factor: u32, fps: u32, pixel_format: &str) -> String {
-    if scale_factor >= 100 {
-        format!("hwdownload,format=bgra,fps={fps},format={pixel_format}")
-    } else {
-        let f = scale_factor as f32 / 100.0;
-        format!(
-            "hwdownload,format=bgra,fps={fps},scale=trunc(iw*{f}/2)*2:trunc(ih*{f}/2)*2,format={pixel_format}"
-        )
+pub fn build_ddagrab_input(output_idx: usize, fps: u32) -> CaptureInput {
+    CaptureInput {
+        backend: CaptureBackend::DesktopDuplication,
+        args: vec![
+            "-f".into(),
+            "lavfi".into(),
+            "-i".into(),
+            format!("ddagrab=output_idx={output_idx}:framerate={fps}:draw_mouse=1"),
+        ],
     }
+}
+
+pub fn build_gdigrab_input(left: i32, top: i32, width: i32, height: i32, fps: u32) -> CaptureInput {
+    CaptureInput {
+        backend: CaptureBackend::GdiGrab,
+        args: vec![
+            "-f".into(),
+            "gdigrab".into(),
+            "-framerate".into(),
+            fps.to_string(),
+            "-offset_x".into(),
+            left.to_string(),
+            "-offset_y".into(),
+            top.to_string(),
+            "-video_size".into(),
+            format!("{width}x{height}"),
+            "-draw_mouse".into(),
+            "1".into(),
+            "-i".into(),
+            "desktop".into(),
+        ],
+    }
+}
+
+pub fn append_video_input(cmd: &mut Command, input: &CaptureInput) {
+    cmd.args(["-hide_banner", "-loglevel", "error"]);
+    input.apply(cmd);
+}
+
+pub fn build_capture_filter(
+    scale_factor: u32,
+    fps: u32,
+    pixel_format: &str,
+    capture_backend: CaptureBackend,
+) -> String {
+    let mut filters = Vec::new();
+
+    if capture_backend.requires_hwdownload() {
+        filters.push("hwdownload".to_string());
+        filters.push("format=bgra".to_string());
+    }
+
+    filters.push(format!("fps={fps}"));
+
+    if scale_factor < 100 {
+        let f = scale_factor as f32 / 100.0;
+        filters.push(format!("scale=trunc(iw*{f}/2)*2:trunc(ih*{f}/2)*2"));
+    }
+
+    filters.push(format!("format={pixel_format}"));
+    filters.join(",")
 }
 
 pub fn append_encoder_args(
@@ -165,10 +267,11 @@ pub fn append_encoder_args(
     strategy: EncoderStrategy,
     fps: u32,
     scale_factor: u32,
+    capture_backend: CaptureBackend,
     enable_faststart: bool,
 ) {
-    let vf_amf = build_capture_filter(scale_factor, fps, "nv12");
-    let vf_x264 = build_capture_filter(scale_factor, fps, "yuv420p");
+    let vf_amf = build_capture_filter(scale_factor, fps, "nv12", capture_backend);
+    let vf_x264 = build_capture_filter(scale_factor, fps, "yuv420p", capture_backend);
 
     match strategy {
         EncoderStrategy::AmdAmf => {
@@ -245,9 +348,12 @@ pub fn append_encoder_args(
 /// Add a DirectShow webcam as the second video input to the FFmpeg command.
 pub fn append_webcam_input(cmd: &mut Command, device_name: &str) {
     cmd.args([
-        "-f", "dshow",
-        "-video_size", "640x480",
-        "-framerate", "30",
+        "-f",
+        "dshow",
+        "-video_size",
+        "640x480",
+        "-framerate",
+        "30",
         "-i",
     ]);
     cmd.arg(format!("video={}", device_name));
@@ -260,20 +366,16 @@ pub fn append_webcam_input(cmd: &mut Command, device_name: &str) {
 /// - `size_percent`: Percentage of base size (200px). Range 50–300.
 ///
 /// Returns the full `-filter_complex` value to replace the simple `-vf`.
-pub fn build_webcam_overlay_filter(
-    base_vf: &str,
-    position: &str,
-    size_percent: u32,
-) -> String {
+pub fn build_webcam_overlay_filter(base_vf: &str, position: &str, size_percent: u32) -> String {
     let overlay_width = 200 * size_percent / 100;
     let overlay_height = overlay_width * 3 / 4; // 4:3 aspect ratio
 
     let position_expr = match position {
-        "top-left"     => "0:0".to_string(),
-        "top-right"    => format!("W-{overlay_width}:0"),
-        "bottom-left"  => format!("0:H-{overlay_height}"),
-        "center"       => format!("(W-{overlay_width})/2:(H-{overlay_height})/2"),
-        _              => format!("W-{overlay_width}:H-{overlay_height}"), // default: bottom-right
+        "top-left" => "0:0".to_string(),
+        "top-right" => format!("W-{overlay_width}:0"),
+        "bottom-left" => format!("0:H-{overlay_height}"),
+        "center" => format!("(W-{overlay_width})/2:(H-{overlay_height})/2"),
+        _ => format!("W-{overlay_width}:H-{overlay_height}"), // default: bottom-right
     };
 
     format!(
@@ -297,11 +399,15 @@ pub fn test_environment() -> String {
         let mut cmd = Command::new(&ffmpeg_path);
         cmd.creation_flags(CREATE_NO_WINDOW);
         cmd.args([
-            "-f", "lavfi",
-            "-i", "nullsrc=s=128x128:d=0.1",
-            "-c:v", strategy.label(),
-            "-f", "null",
-            "-"
+            "-f",
+            "lavfi",
+            "-i",
+            "nullsrc=s=128x128:d=0.1",
+            "-c:v",
+            strategy.label(),
+            "-f",
+            "null",
+            "-",
         ]);
         cmd.stdout(Stdio::null());
         cmd.stderr(Stdio::null());
@@ -315,14 +421,17 @@ pub fn test_environment() -> String {
             }
         }
     }
-    
+
     println!("Hardware tests failed, falling back to libx264");
     EncoderStrategy::SoftwareX264.label().to_string()
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{build_capture_filter, build_video_input};
+    use super::{
+        build_capture_filter, build_ddagrab_input, build_gdigrab_input, build_video_input,
+        CaptureBackend,
+    };
 
     #[test]
     fn build_video_input_uses_supported_gfxcapture_options() {
@@ -343,8 +452,33 @@ mod tests {
     #[test]
     fn build_capture_filter_forces_constant_fps_before_encoding() {
         assert_eq!(
-            build_capture_filter(100, 60, "nv12"),
+            build_capture_filter(100, 60, "nv12", CaptureBackend::GraphicsCapture),
             "hwdownload,format=bgra,fps=60,format=nv12"
         );
+    }
+
+    #[test]
+    fn build_capture_filter_skips_hwdownload_for_gdigrab() {
+        assert_eq!(
+            build_capture_filter(80, 60, "yuv420p", CaptureBackend::GdiGrab),
+            "fps=60,scale=trunc(iw*0.8/2)*2:trunc(ih*0.8/2)*2,format=yuv420p"
+        );
+    }
+
+    #[test]
+    fn build_ddagrab_input_draws_mouse() {
+        let input = build_ddagrab_input(2, 60);
+        let debug = format!("{input:?}");
+        assert!(debug.contains("DesktopDuplication"));
+        assert!(debug.contains("ddagrab=output_idx=2:framerate=60:draw_mouse=1"));
+    }
+
+    #[test]
+    fn build_gdigrab_input_uses_monitor_region() {
+        let input = build_gdigrab_input(10, 20, 1920, 1080, 30);
+        let debug = format!("{input:?}");
+        assert!(debug.contains("GdiGrab"));
+        assert!(debug.contains("1920x1080"));
+        assert!(debug.contains("desktop"));
     }
 }

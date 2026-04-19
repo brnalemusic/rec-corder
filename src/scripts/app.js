@@ -20,6 +20,8 @@ let selectedAudioOutput = null;
 let selectedMicId = null;
 let webcamEnabled = false;
 let webcamAvailable = false;
+let recordingHealthInterval = null;
+let isHandlingRuntimeFailure = false;
 
 function resolveSelectedMonitor(monitors) {
   if (!Array.isArray(monitors) || monitors.length === 0) {
@@ -55,6 +57,80 @@ async function syncPrefs() {
 
 document.addEventListener('DOMContentLoaded', init);
 setupSecurity();
+
+function startRecordingHealthMonitor() {
+  stopRecordingHealthMonitor();
+  recordingHealthInterval = setInterval(() => {
+    void checkRecordingHealth();
+  }, 1000);
+}
+
+function stopRecordingHealthMonitor() {
+  if (recordingHealthInterval) {
+    clearInterval(recordingHealthInterval);
+    recordingHealthInterval = null;
+  }
+}
+
+async function checkRecordingHealth() {
+  if (!isRecording || isProcessing || isHandlingRuntimeFailure) {
+    return;
+  }
+
+  try {
+    const status = await recorder.getStatus();
+    if (status?.runtime_error) {
+      await handleRuntimeFailure(status.runtime_error, status.output_file);
+    }
+  } catch (error) {
+    console.warn('Failed to check recording health:', error);
+  }
+}
+
+async function handleRuntimeFailure(runtimeError, outputFile) {
+  if (isHandlingRuntimeFailure) {
+    return;
+  }
+
+  isHandlingRuntimeFailure = true;
+  stopRecordingHealthMonitor();
+  stopTimer();
+
+  isProcessing = true;
+  if (dom.processingText) dom.processingText.textContent = 'Recuperando gravação...';
+  if (dom.statusText) dom.statusText.textContent = 'Captura interrompida. Salvando...';
+  updateUI();
+
+  let finalMessage = String(runtimeError);
+  let recoveredPath = outputFile || null;
+
+  try {
+    const stoppedFile = await recorder.stopRecording();
+    if (stoppedFile) {
+      recoveredPath = stoppedFile;
+    }
+  } catch (stopError) {
+    finalMessage += `\n\nFalha ao finalizar automaticamente: ${String(stopError)}`;
+  }
+
+  isRecording = false;
+  isProcessing = false;
+  isHandlingRuntimeFailure = false;
+  updateUI();
+
+  if (dom.statusText) dom.statusText.textContent = 'Captura interrompida';
+  if (dom.timerLabel) {
+    dom.timerLabel.textContent = recoveredPath
+      ? truncatePath(recoveredPath, 2)
+      : 'Pronto para gravar';
+  }
+
+  if (recoveredPath) {
+    finalMessage += `\n\nArquivo parcial/recuperado:\n${recoveredPath}`;
+  }
+
+  alert(`Capture Error: ${finalMessage}`);
+}
 
 async function init() {
   const config = await loadAndMigratePrefs();
@@ -398,8 +474,10 @@ async function handleStart() {
 
     isRecording = true;
     isProcessing = false;
+    isHandlingRuntimeFailure = false;
     updateUI();
     startTimer(dom.timerDisplay);
+    startRecordingHealthMonitor();
 
     if (dom.statusText) dom.statusText.textContent = 'Gravando';
     if (dom.timerLabel) dom.timerLabel.textContent = truncatePath(result.file_path, 2);
@@ -416,6 +494,7 @@ async function handleStart() {
 
 async function handleStop() {
   if (isProcessing) return;
+  stopRecordingHealthMonitor();
   isProcessing = true;
   if (dom.processingText) dom.processingText.textContent = 'Finalizando...';
   stopTimer();
@@ -429,6 +508,7 @@ async function handleStop() {
 
     isRecording = false;
     isProcessing = false;
+    isHandlingRuntimeFailure = false;
     updateUI();
 
     if (dom.statusText) dom.statusText.textContent = 'Salvo com sucesso';

@@ -1,31 +1,16 @@
 use crate::errors::RecorderError;
 use crate::services::audio::{self, AudioDeviceInfo};
 use serde::Serialize;
-use std::ffi::c_void;
-
-#[cfg(target_os = "windows")]
-use std::sync::mpsc;
-#[cfg(target_os = "windows")]
-use std::thread::{self, JoinHandle};
 #[cfg(target_os = "windows")]
 use windows::core::PCWSTR;
 #[cfg(target_os = "windows")]
-use windows::Win32::Foundation::{BOOL, COLORREF, HWND, LPARAM, RECT};
+use windows::Win32::Foundation::{BOOL, LPARAM, RECT};
+#[cfg(target_os = "windows")]
+use windows::Win32::Graphics::Dxgi::{CreateDXGIFactory1, IDXGIFactory1};
 #[cfg(target_os = "windows")]
 use windows::Win32::Graphics::Gdi::{
-    CreateRectRgn, EnumDisplayDevicesW, EnumDisplayMonitors, GetMonitorInfoW, HDC, HMONITOR,
-    MONITORINFOEXW, MonitorFromWindow, SetWindowRgn, DISPLAY_DEVICEW,
-    MONITOR_DEFAULTTONEAREST,
-};
-#[cfg(target_os = "windows")]
-use windows::Win32::System::Threading::GetCurrentThreadId;
-#[cfg(target_os = "windows")]
-use windows::Win32::UI::WindowsAndMessaging::{
-    CreateWindowExW, DispatchMessageW, GetMessageW, MSG, PostMessageW, PostThreadMessageW,
-    SetLayeredWindowAttributes, SetWindowPos, TranslateMessage, HWND_TOPMOST, LWA_ALPHA,
-    SWP_NOACTIVATE, SWP_SHOWWINDOW, WINDOW_EX_STYLE, WM_CLOSE, WM_QUIT, WS_EX_LAYERED,
-    WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
-    GetForegroundWindow, GetWindowRect, IsWindowVisible,
+    EnumDisplayDevicesW, EnumDisplayMonitors, GetMonitorInfoW, DISPLAY_DEVICEW, HDC, HMONITOR,
+    MONITORINFOEXW,
 };
 
 #[derive(Serialize)]
@@ -50,8 +35,6 @@ pub struct AudioOutputInfo {
 }
 
 #[cfg(target_os = "windows")]
-pub const OVERLAY_ALPHA: u8 = 1;
-#[cfg(target_os = "windows")]
 pub const MONITORINFO_PRIMARY_FLAG: u32 = 1;
 
 #[cfg(target_os = "windows")]
@@ -59,179 +42,27 @@ pub const MONITORINFO_PRIMARY_FLAG: u32 = 1;
 pub struct NativeMonitorInfo {
     pub index: usize,
     pub hmonitor: isize,
+    pub dxgi_output_index: Option<usize>,
     pub name: String,
     pub bounds: RECT,
     pub is_primary: bool,
 }
 
 #[cfg(target_os = "windows")]
-pub struct CaptureGuardWindow {
-    pub hwnd: isize,
-    pub thread_id: u32,
-    pub join_handle: Option<JoinHandle<()>>,
-}
-
-#[cfg(not(target_os = "windows"))]
-pub struct CaptureGuardWindow {}
-
-#[cfg(target_os = "windows")]
-impl Drop for CaptureGuardWindow {
-    fn drop(&mut self) {
-        unsafe {
-            let _ = PostMessageW(HWND(self.hwnd as *mut c_void), WM_CLOSE, None, None);
-            let _ = PostThreadMessageW(self.thread_id, WM_QUIT, None, None);
-        }
-
-        if let Some(join_handle) = self.join_handle.take() {
-            let _ = join_handle.join();
-        }
-    }
-}
-
-#[cfg(target_os = "windows")]
-impl CaptureGuardWindow {
-    pub fn create(bounds: RECT) -> Result<Self, RecorderError> {
-        let (ready_tx, ready_rx) = mpsc::sync_channel(1);
-        let join_handle = thread::spawn(move || {
-            let class_name: Vec<u16> = "STATIC\0".encode_utf16().collect();
-            let width = (bounds.right - bounds.left).max(1);
-            let height = (bounds.bottom - bounds.top).max(1);
-
-            let result = unsafe {
-                let hwnd = CreateWindowExW(
-                    WINDOW_EX_STYLE(
-                        WS_EX_LAYERED.0
-                            | WS_EX_TOPMOST.0
-                            | WS_EX_TOOLWINDOW.0
-                            | WS_EX_NOACTIVATE.0,
-                    ),
-                    PCWSTR(class_name.as_ptr()),
-                    PCWSTR::null(),
-                    WS_POPUP,
-                    bounds.left,
-                    bounds.top,
-                    width,
-                    height,
-                    None,
-                    None,
-                    None,
-                    None,
-                );
-
-                match hwnd {
-                    Ok(hwnd) => {
-                        let _ = SetLayeredWindowAttributes(
-                            hwnd,
-                            COLORREF(0),
-                            OVERLAY_ALPHA,
-                            LWA_ALPHA,
-                        );
-                        let _ = SetWindowPos(
-                            hwnd,
-                            HWND_TOPMOST,
-                            bounds.left,
-                            bounds.top,
-                            width,
-                            height,
-                            SWP_NOACTIVATE | SWP_SHOWWINDOW,
-                        );
-
-                        let region = CreateRectRgn(0, 0, 1, 1);
-                        let _ = SetWindowRgn(hwnd, region, true);
-
-                        Ok((hwnd.0 as isize, GetCurrentThreadId()))
-                    }
-                    Err(_) => Err(()),
-                }
-            };
-
-            if ready_tx.send(result).is_err() {
-                return;
-            }
-
-            let mut msg = MSG::default();
-            loop {
-                let status = unsafe { GetMessageW(&mut msg, None, 0, 0) };
-                if status.0 == -1 || status.0 == 0 {
-                    break;
-                }
-
-                unsafe {
-                    let _ = TranslateMessage(&msg);
-                    DispatchMessageW(&msg);
-                }
-            }
-        });
-
-        let (hwnd, thread_id) = ready_rx
-            .recv()
-            .map_err(|_| {
-                RecorderError::CaptureInit(
-                    "Falha ao iniciar a janela de compatibilidade para captura fullscreen".into(),
-                )
-            })?
-            .map_err(|_| {
-                RecorderError::CaptureInit(
-                    "Nao foi possivel criar a janela de compatibilidade para captura fullscreen"
-                        .into(),
-                )
-            })?;
-
-        Ok(Self {
-            hwnd,
-            thread_id,
-            join_handle: Some(join_handle),
-        })
-    }
-}
-
-#[cfg(target_os = "windows")]
-pub fn find_fullscreen_window_on_monitor(monitor_bounds: RECT) -> Option<isize> {
-    unsafe {
-        let hwnd = GetForegroundWindow();
-        if hwnd.0.is_null() || !IsWindowVisible(hwnd).as_bool() {
-            return None;
-        }
-
-        let mut rect = RECT::default();
-        if GetWindowRect(hwnd, &mut rect).is_err() {
-            return None;
-        }
-
-        let hmonitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
-        let mut info = MONITORINFOEXW::default();
-        info.monitorInfo.cbSize = std::mem::size_of::<MONITORINFOEXW>() as u32;
-        if !GetMonitorInfoW(hmonitor, &mut info as *mut _ as *mut _).as_bool() {
-            return None;
-        }
-
-        let m_bounds = info.monitorInfo.rcMonitor;
-        if m_bounds.left != monitor_bounds.left || m_bounds.top != monitor_bounds.top {
-            return None;
-        }
-
-        let width = rect.right - rect.left;
-        let height = rect.bottom - rect.top;
-        let m_width = monitor_bounds.right - monitor_bounds.left;
-        let m_height = monitor_bounds.bottom - monitor_bounds.top;
-
-        if width >= (m_width * 9 / 10) && height >= (m_height * 9 / 10) {
-            println!("Direct window capture enabled for potential fullscreen app (HWND: {:?})", hwnd.0);
-            return Some(hwnd.0 as isize);
-        }
-    }
-    None
-}
-
-#[cfg(target_os = "windows")]
 pub fn parse_display_device_string(device: &[u16]) -> String {
-    let len = device.iter().position(|&value| value == 0).unwrap_or(device.len());
+    let len = device
+        .iter()
+        .position(|&value| value == 0)
+        .unwrap_or(device.len());
     String::from_utf16_lossy(&device[..len]).trim().to_string()
 }
 
 #[cfg(target_os = "windows")]
 pub fn resolve_monitor_friendly_name(adapter_name: &str) -> Option<String> {
-    let adapter_name_wide: Vec<u16> = adapter_name.encode_utf16().chain(std::iter::once(0)).collect();
+    let adapter_name_wide: Vec<u16> = adapter_name
+        .encode_utf16()
+        .chain(std::iter::once(0))
+        .collect();
     let mut device_index = 0;
 
     loop {
@@ -252,9 +83,7 @@ pub fn resolve_monitor_friendly_name(adapter_name: &str) -> Option<String> {
         }
 
         let monitor_name = parse_display_device_string(&display_device.DeviceString);
-        if !monitor_name.is_empty()
-            && !monitor_name.eq_ignore_ascii_case("Generic PnP Monitor")
-        {
+        if !monitor_name.is_empty() && !monitor_name.eq_ignore_ascii_case("Generic PnP Monitor") {
             return Some(monitor_name);
         }
 
@@ -263,6 +92,43 @@ pub fn resolve_monitor_friendly_name(adapter_name: &str) -> Option<String> {
         }
 
         device_index += 1;
+    }
+
+    None
+}
+
+#[cfg(target_os = "windows")]
+pub fn resolve_dxgi_output_index(target_hmonitor: HMONITOR) -> Option<usize> {
+    unsafe {
+        let factory = CreateDXGIFactory1::<IDXGIFactory1>().ok()?;
+        let mut adapter_index = 0;
+        let mut output_index = 0usize;
+
+        loop {
+            let adapter = match factory.EnumAdapters1(adapter_index) {
+                Ok(adapter) => adapter,
+                Err(_) => break,
+            };
+
+            let mut adapter_output_index = 0;
+            loop {
+                let output = match adapter.EnumOutputs(adapter_output_index) {
+                    Ok(output) => output,
+                    Err(_) => break,
+                };
+
+                if let Ok(desc) = output.GetDesc() {
+                    if desc.Monitor.0 == target_hmonitor.0 {
+                        return Some(output_index);
+                    }
+                }
+
+                output_index += 1;
+                adapter_output_index += 1;
+            }
+
+            adapter_index += 1;
+        }
     }
 
     None
@@ -289,6 +155,7 @@ pub unsafe extern "system" fn monitor_enum_proc(
         let width = bounds.right - bounds.left;
         let height = bounds.bottom - bounds.top;
         let is_primary = (info.monitorInfo.dwFlags & MONITORINFO_PRIMARY_FLAG) != 0;
+        let dxgi_output_index = resolve_dxgi_output_index(hmonitor);
         let label = if is_primary {
             format!("{friendly_name} (Principal) - {width}x{height}")
         } else {
@@ -298,6 +165,7 @@ pub unsafe extern "system" fn monitor_enum_proc(
         monitors.push(NativeMonitorInfo {
             index: monitors.len(),
             hmonitor: hmonitor.0 as isize,
+            dxgi_output_index,
             name: label,
             bounds,
             is_primary,
@@ -353,7 +221,10 @@ pub fn enumerate_native_monitors() -> Result<Vec<()>, RecorderError> {
 pub fn resolve_monitor_index(preferred_index: usize) -> Result<usize, RecorderError> {
     let monitors = enumerate_native_monitors()?;
 
-    if monitors.iter().any(|monitor| monitor.index == preferred_index) {
+    if monitors
+        .iter()
+        .any(|monitor| monitor.index == preferred_index)
+    {
         return Ok(preferred_index);
     }
 

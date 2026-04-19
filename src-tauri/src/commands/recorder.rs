@@ -26,6 +26,7 @@ pub struct RecordingStatus {
     pub is_recording: bool,
     pub elapsed_secs: u64,
     pub output_file: Option<String>,
+    pub runtime_error: Option<String>,
 }
 
 
@@ -47,17 +48,27 @@ pub struct AppInfo {
 }
 
 #[tauri::command]
-pub fn get_status(state: State<'_, AppState>) -> RecordingStatus {
+pub fn get_status(
+    state: State<'_, AppState>,
+    session_handle: State<'_, SessionHandle>,
+) -> RecordingStatus {
     let file = state
         .current_file
         .lock()
         .as_ref()
         .map(|p| p.to_string_lossy().to_string());
+    let runtime_error = session_handle.lock().as_mut().and_then(|active| {
+        active
+            .session
+            .poll_runtime_error()
+            .unwrap_or_else(|err| Some(err.to_string()))
+    });
 
     RecordingStatus {
         is_recording: state.recording(),
         elapsed_secs: state.elapsed_secs(),
         output_file: file,
+        runtime_error,
     }
 }
 

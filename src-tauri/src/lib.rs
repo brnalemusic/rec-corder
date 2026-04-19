@@ -4,12 +4,11 @@ mod errors;
 mod services;
 mod state;
 
-use commands::recorder::{self, SessionHandle};
 use commands::ffmpeg;
+use commands::recorder::{self, SessionHandle};
+use commands::updater::{self, PendingUpdate};
 use parking_lot::Mutex;
 use state::AppState;
-use commands::updater::{self, PendingUpdate};
-use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -18,9 +17,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .setup(|_app| {
-            Ok(())
-        })
+        .setup(|_app| Ok(()))
         .manage(AppState::new())
         .manage::<SessionHandle>(Mutex::new(None))
         .manage(PendingUpdate(Mutex::new(None)))

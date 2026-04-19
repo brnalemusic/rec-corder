@@ -7,7 +7,7 @@
 const { invoke } = window.__TAURI__.core;
 
 /**
- * @typedef {{ is_recording: boolean, elapsed_secs: number, output_file: string|null }} RecordingStatus
+ * @typedef {{ is_recording: boolean, elapsed_secs: number, output_file: string|null, runtime_error: string|null }} RecordingStatus
  * @typedef {{ file_path: string }} StartResult
  * @typedef {{ index: number, name: string, is_primary: boolean }} MonitorInfo
  * @typedef {{ id: string, name: string, is_default: boolean }} MicInfo
