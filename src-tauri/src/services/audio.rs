@@ -146,6 +146,7 @@ impl NativeAudioCapture {
 #[cfg(target_os = "windows")]
 mod platform {
     use super::*;
+    use std::io::Write;
     use std::slice;
     use windows::core::{PCWSTR, PROPVARIANT};
     use windows::Win32::Devices::FunctionDiscovery::PKEY_Device_FriendlyName;
