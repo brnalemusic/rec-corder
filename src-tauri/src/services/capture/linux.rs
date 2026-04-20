@@ -2,6 +2,16 @@ use crate::errors::RecorderError;
 use super::CameraInfo;
 use std::process::Command;
 use regex::Regex;
+use once_cell::sync::Lazy;
+
+/// Regex estáticos compilados uma única vez para melhor performance no Linux.
+static XRANDR_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"^(\S+)\s+connected\s+(primary\s+)?(\d+)x(\d+)\+(\d+)\+(\d+)").unwrap()
+});
+
+static WPCTL_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(\*?)\s+(\d+)\.\s+(.+)").unwrap()
+});
 
 /// Estrutura contendo informações nativas de monitores no Linux (X11/Wayland via xrandr).
 #[derive(Clone, Debug)]
@@ -28,11 +38,8 @@ pub fn enumerate_linux_monitors() -> Result<Vec<LinuxMonitorInfo>, RecorderError
     let mut monitors = Vec::new();
     let mut index = 0;
 
-    // Regex para extrair a linha do xrandr: ex: HDMI-1 connected primary 1440x900+0+94 (...)
-    let re = Regex::new(r"^(\S+)\s+connected\s+(primary\s+)?(\d+)x(\d+)\+(\d+)\+(\d+)").unwrap();
-
     for line in output_str.lines() {
-        if let Some(caps) = re.captures(line) {
+        if let Some(caps) = XRANDR_RE.captures(line) {
             let name = caps.get(1).unwrap().as_str().to_string();
             let is_primary = caps.get(2).is_some();
             let width: i32 = caps.get(3).unwrap().as_str().parse().unwrap_or(0);
@@ -101,9 +108,6 @@ fn list_wpctl_devices(section_name: &str, id_prop: &str, name_prop: &str) -> Vec
     let mut in_main_section = section_name != "Video" && section_name != "Sources:" && section_name != "Sinks:";
     let mut in_sub_section = false;
     
-    // Regex para capturar ID numérico e o nome (parcial) do wpctl status
-    let re = Regex::new(r"(\*?)\s+(\d+)\.\s+(.+)").unwrap();
-
     for i in 0..lines.len() {
         let line = lines[i];
         
@@ -129,7 +133,7 @@ fn list_wpctl_devices(section_name: &str, id_prop: &str, name_prop: &str) -> Vec
                     break; 
                 }
 
-                if let Some(caps) = re.captures(line) {
+                if let Some(caps) = WPCTL_RE.captures(line) {
                     let is_default = !caps.get(1).unwrap().as_str().is_empty();
                     let numeric_id = caps.get(2).unwrap().as_str();
 
@@ -161,34 +165,30 @@ fn list_wpctl_devices(section_name: &str, id_prop: &str, name_prop: &str) -> Vec
                         }
                     }
                 }
-                }
-                }
-                }
+            }
+        }
+    }
 
-                devices
-                }
+    devices
+}
 
-                /// Obtém todas as propriedades de um objeto via wpctl inspect de uma vez só.
-                fn get_all_wpctl_props(id: &str) -> Option<std::collections::HashMap<String, String>> {
-                let output = Command::new("wpctl").args(["inspect", id]).output().ok()?;
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                let mut props = std::collections::HashMap::new();
+/// Obtém todas as propriedades de um objeto via wpctl inspect de uma vez só.
+fn get_all_wpctl_props(id: &str) -> Option<std::collections::HashMap<String, String>> {
+    let output = Command::new("wpctl").args(["inspect", id]).output().ok()?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut props = std::collections::HashMap::new();
 
-                for line in stdout.lines() {
-                if let Some(pos) = line.find('=') {
-                let key = line[..pos].trim().trim_matches('"');
-                let value = line[pos+1..].trim().trim_matches('"');
-                props.insert(key.to_string(), value.to_string());
-                }
-                }
+    for line in stdout.lines() {
+        if let Some(pos) = line.find('=') {
+            let key = line[..pos].trim().trim_matches('"');
+            let value = line[pos+1..].trim().trim_matches('"');
+            props.insert(key.to_string(), value.to_string());
+        }
+    }
 
-                if props.is_empty() { None } else { Some(props) }
-                }
+    if props.is_empty() { None } else { Some(props) }
+}
 
-                /// Inspeciona a propriedade de um ID no wpctl para descobrir sua identificação.
-                fn get_wpctl_prop(id: &str, prop: &str) -> Option<String> {
-                get_all_wpctl_props(id)?.get(prop).cloned()
-                }
 /// Lista todas as câmeras disponíveis no ambiente Linux, utilizando preferencialmente o wpctl e com fallback para /dev/video.
 pub fn list_cameras() -> Result<Vec<CameraInfo>, RecorderError> {
     let wpctl_cameras = list_wpctl_cameras();
@@ -217,4 +217,35 @@ pub fn list_cameras() -> Result<Vec<CameraInfo>, RecorderError> {
     }
     
     Ok(cameras)
+}
+
+/// Verifica se as dependências essenciais do sistema Linux estão instaladas.
+pub fn validate_linux_system_deps() -> Result<(), Vec<String>> {
+    let mut missing = Vec::new();
+    let tools = vec![
+        ("xrandr", "--version"),
+        ("wpctl", "status"),
+        ("pactl", "info"),
+        ("awk", "--version"),
+    ];
+
+    for (tool, arg) in tools {
+        let exists = Command::new(tool)
+            .arg(arg)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+
+        if !exists {
+            missing.push(tool.to_string());
+        }
+    }
+
+    if missing.is_empty() {
+        Ok(())
+    } else {
+        Err(missing)
+    }
 }

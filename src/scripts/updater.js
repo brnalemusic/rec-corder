@@ -3,11 +3,9 @@
  * Lida com o processo de download e instalação de atualizações.
  */
 
-const { invoke } = window.__TAURI__.core;
-const { listen, emit } = window.__TAURI__.event;
-const { getCurrentWindow } = window.__TAURI__.window;
+import * as recorder from './recorder.js';
 
-const appWindow = getCurrentWindow();
+const appWindow = recorder.getCurrentWindow();
 
 // Elementos
 const btnCancel = document.getElementById('btn-cancel');
@@ -42,7 +40,7 @@ async function init() {
     }
   }
 
-  unlistenData = await listen('updater-data', (event) => {
+  unlistenData = await recorder.listen('updater-data', (event) => {
     const [version, body] = event.payload;
     
     if (version) {
@@ -151,13 +149,13 @@ async function init() {
   });
 
   // Notifica o backend que o frontend está pronto para receber os dados
-  await emit('updater-ready');
+  await recorder.emit('updater-ready');
 }
 
 init();
 
 btnCancel.addEventListener('click', async () => {
-  await emit('updater-close');
+  await recorder.emit('updater-close');
 });
 
 btnInstall.addEventListener('click', async () => {
@@ -171,8 +169,8 @@ btnInstall.addEventListener('click', async () => {
     
     let downloadTotal = 0;
     let downloadedBytes = 0;
-
-    const unlistenProgress = await listen('update-progress', (event) => {
+ 
+    const unlistenProgress = await recorder.listen('update-progress', (event) => {
       const payload = event.payload;
       const chunk = payload.chunk;
       downloadTotal = payload.total || downloadTotal;
@@ -186,18 +184,18 @@ btnInstall.addEventListener('click', async () => {
       }
     });
 
-    const unlistenFinished = await listen('update-finished', () => {
+    const unlistenFinished = await recorder.listen('update-finished', () => {
       downloadStatus.textContent = 'Instalando...';
       statusText.textContent = 'A atualização foi baixada e está sendo aplicada. O aplicativo será reiniciado em instantes.';
       progressFill.style.width = '100%';
       downloadPercent.textContent = '100%';
     });
 
-    const unlistenError = await listen('update-error', (event) => {
+    const unlistenError = await recorder.listen('update-error', (event) => {
       showError(`Falha técnica: ${event.payload}`);
     });
 
-    await invoke('install_update');
+    await recorder.installUpdate();
 
   } catch (error) {
     showError(error);
@@ -215,7 +213,7 @@ function showError(error) {
     <div class="error-text">
       Não foi possível concluir a atualização automática.<br>
       Por favor, baixe a versão mais recente manualmente em: 
-      <span class="download-link" onclick="window.__TAURI__.core.invoke('open_link', { url: 'https://www.reccorder.com.br' })">www.reccorder.com.br</span>
+      <span class="download-link" onclick="import('./recorder.js').then(r => r.invoke('open_link', { url: 'https://www.reccorder.com.br' }))">www.reccorder.com.br</span>
     </div>
   `;
   

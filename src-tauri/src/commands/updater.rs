@@ -97,36 +97,36 @@ pub async fn show_updater(app: AppHandle<Wry>, version: String, body: Option<Str
 
 #[tauri::command]
 pub async fn get_release_notes(app: AppHandle<Wry>, version: String) -> Result<Option<String>, String> {
-    let _ = version; // Mark as used to avoid warnings
-    // 1. Tenta ler do diretório de recursos (se estiver empacotado)
-    if let Ok(mut resource_path) = app.path().resource_dir() {
-        let up_path = resource_path.join("_up_").join("UPDATE.md");
-        if let Ok(content) = std::fs::read_to_string(&up_path) {
+    let _ = version;
+
+    // 1. Em desenvolvimento, prioriza o arquivo na raiz do projeto (fora de src-tauri)
+    #[cfg(debug_assertions)]
+    {
+        if let Ok(content) = std::fs::read_to_string("../UPDATE.md") {
+            println!("[DEBUG] Release Notes carregadas da raiz do projeto (../UPDATE.md)");
             return Ok(Some(content));
         }
-
-        let up_path_lower = resource_path.join("_up_").join("update.md");
-        if let Ok(content) = std::fs::read_to_string(&up_path_lower) {
+        if let Ok(content) = std::fs::read_to_string("../update.md") {
             return Ok(Some(content));
         }
+    }
 
-        resource_path.push("UPDATE.md");
+    // 2. Tenta usar o resolvedor de caminhos do Tauri v2 (Recomendado para Produção)
+    use tauri::path::BaseDirectory;
+    if let Ok(resource_path) = app.path().resolve("UPDATE.md", BaseDirectory::Resource) {
         if let Ok(content) = std::fs::read_to_string(&resource_path) {
             return Ok(Some(content));
         }
     }
-    
-    // 2. Tenta ler do diretório raiz durante o desenvolvimento (um nível acima de src-tauri)
-    if let Ok(content) = std::fs::read_to_string("../UPDATE.md") {
-        return Ok(Some(content));
+
+    // 3. Fallback para lowercase no resource resolver
+    if let Ok(resource_path) = app.path().resolve("update.md", BaseDirectory::Resource) {
+        if let Ok(content) = std::fs::read_to_string(&resource_path) {
+            return Ok(Some(content));
+        }
     }
 
-    // 3. Fallback para lowercase
-    if let Ok(content) = std::fs::read_to_string("../update.md") {
-        return Ok(Some(content));
-    }
-
-    // 4. Fallback final para o diretório atual
+    // 4. Fallback final para o diretório atual do binário
     if let Ok(content) = std::fs::read_to_string("UPDATE.md") {
         return Ok(Some(content));
     }

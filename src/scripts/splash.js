@@ -1,9 +1,12 @@
+import * as recorder from './recorder.js';
+
 /**
  * Rec Corder — Tela de Abertura (Splash)
  * Gerencia a inicialização inicial, verificação do FFmpeg e detecção de hardware.
  */
 
-const { invoke } = window.__TAURI__.core;
+
+
 
 /**
  * Realiza as verificações de inicialização.
@@ -14,7 +17,7 @@ async function bootstrap() {
   const splashVersion = document.getElementById('splashVersion');
 
   try {
-    const version = await window.__TAURI__.app.getVersion();
+    const version = await recorder.getAppVersion();
     if (splashVersion) splashVersion.textContent = `v${version}`;
   } catch (e) {
     console.warn('Falha ao obter a versão para a tela de abertura:', e);
@@ -22,7 +25,7 @@ async function bootstrap() {
 
   try {
     // Verificar se FFmpeg está disponível
-    const ffmpegStatus = await invoke('check_ffmpeg');
+    const ffmpegStatus = await recorder.invoke('check_ffmpeg');
     
     if (!ffmpegStatus.found) {
       console.warn('FFmpeg não encontrado.');
@@ -40,7 +43,7 @@ async function bootstrap() {
     // Testar ambiente de encoding
     statusText.style.color = '#ffaa00';
     statusText.textContent = 'Detectando acelerador...';
-    const encoder = await invoke('test_environment');
+    const encoder = await recorder.invoke('test_environment');
     console.log('Ambiente testado. Encoder:', encoder);
 
     statusText.style.color = '#00ff88';
@@ -57,7 +60,7 @@ async function bootstrap() {
 
   // Transição segura feita inteiramente pelo Rust (sem depender da API JS de janela)
   try {
-    await invoke('finish_splash');
+    await recorder.invoke('finish_splash');
   } catch (e) {
     console.error('Erro na transição de janela:', e);
   }

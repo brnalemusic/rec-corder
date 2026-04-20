@@ -53,6 +53,7 @@ scripts/*
 !scripts/run-cli-dev.js
 !scripts/generate-installer-assets.js
 !scripts/generate-installer-assets.ps1
+!scripts/ai-review.cjs
 dxdiag.txt
 pubkey.txt
 check.txt
@@ -74,8 +75,11 @@ desktop.ini
 *.tmp
 
 # AI (Vibe Coding) Artifacts
-GEMINI.md
+GEMINI*.md
+OPENCLAUDE.md
 model.py
+.openclaude-profile.json
+.openclaude
 
 # --- Python & CLI ---
 __pycache__/

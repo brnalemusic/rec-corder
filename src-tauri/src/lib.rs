@@ -22,6 +22,17 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|_app| {
+            // Validação de dependências no Linux (não-bloqueante no setup)
+            #[cfg(target_os = "linux")]
+            {
+                use crate::services::capture::linux::validate_linux_system_deps;
+                if let Err(missing) = validate_linux_system_deps() {
+                    eprintln!("[AVISO] Dependências do sistema ausentes: {:?}. A gravação será bloqueada.", missing);
+                } else {
+                    println!("[INFO] Todas as dependências do sistema Linux foram encontradas.");
+                }
+            }
+
             Ok(())
         })
         .manage(AppState::new())

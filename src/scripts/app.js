@@ -30,8 +30,7 @@ async function init() {
 
   // Escuta as atualizações de configurações de outras janelas (ex. Configurações)
   try {
-    const { listen } = window.__TAURI__.event;
-    await listen('config-updated', (event) => {
+    await recorder.listen('config-updated', (event) => {
       console.log('Configuração atualizada pelo backend:', event.payload);
       const updatedConfig = event.payload;
       

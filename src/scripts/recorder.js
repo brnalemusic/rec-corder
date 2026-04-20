@@ -4,7 +4,67 @@
  * Única fonte de verdade para o contrato frontend ↔ backend.
  */
 
-const { invoke } = window.__TAURI__.core;
+const { invoke: tauriInvoke } = window.__TAURI__.core;
+const { listen: tauriListen, emit: tauriEmit } = window.__TAURI__.event;
+const { getCurrentWindow: tauriGetCurrentWindow } = window.__TAURI__.window;
+const { open: tauriOpenDialog } = window.__TAURI__.dialog;
+const { getVersion: tauriGetVersion } = window.__TAURI__.app;
+
+/**
+ * Wrapper para o invoke do Tauri.
+ * @param {string} cmd - Nome do comando.
+ * @param {Object} [args] - Argumentos do comando.
+ * @returns {Promise<any>}
+ */
+export async function invoke(cmd, args) {
+  return tauriInvoke(cmd, args);
+}
+
+/**
+ * Registra um listener para eventos do Tauri.
+ * @param {string} event - Nome do evento.
+ * @param {Function} handler - Callback de execução.
+ * @returns {Promise<Function>} Função de limpeza (unlisten).
+ */
+export async function listen(event, handler) {
+  return tauriListen(event, handler);
+}
+
+/**
+ * Emite um evento para o Tauri.
+ * @param {string} event - Nome do evento.
+ * @param {any} [payload] - Dados do evento.
+ * @returns {Promise<void>}
+ */
+export async function emit(event, payload) {
+  return tauriEmit(event, payload);
+}
+
+/**
+ * Obtém a instância da janela atual.
+ * @returns {Object} A janela atual do Tauri.
+ */
+export function getCurrentWindow() {
+  return tauriGetCurrentWindow();
+}
+
+/**
+ * Abre um diálogo de seleção de arquivos/pastas.
+ * @param {Object} options - Configurações do diálogo.
+ * @returns {Promise<string|string[]|null>} O caminho selecionado.
+ */
+export async function openDialog(options) {
+  return tauriOpenDialog(options);
+}
+
+/**
+ * Força o encerramento imediato da aplicação.
+ * @returns {Promise<void>}
+ */
+export async function forceExit() {
+  return invoke('force_exit');
+}
+
 
 /**
  * @typedef {{ is_recording: boolean, elapsed_secs: number, output_file: string|null }} RecordingStatus
@@ -155,7 +215,7 @@ export async function acknowledgeWelcome() {
  */
 export async function getAppVersion() {
   try {
-    return await window.__TAURI__.app.getVersion();
+    return await tauriGetVersion();
   } catch (e) {
     console.warn('Falha ao obter versão pela API do Tauri, usando fallback para o backend:', e);
     const info = await getAppInfo();

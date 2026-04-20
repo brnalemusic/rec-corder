@@ -61,9 +61,7 @@ export function bindEvents() {
 
   // Configura janela de confirmação de saída
   try {
-    const { getCurrentWindow } = window.__TAURI__.window;
-    const { invoke } = window.__TAURI__.core;
-    const appWindow = getCurrentWindow();
+    const appWindow = recorder.getCurrentWindow();
     appWindow.onCloseRequested(async (event) => {
       event.preventDefault();
       if (state.isRecording) {
@@ -72,13 +70,13 @@ export function bindEvents() {
         }
       } else {
         // Sai imediatamente caso não esteja gravando
-        await invoke('force_exit');
+        await recorder.forceExit();
       }
     });
     
     dom.confirmExitBtn?.addEventListener('click', async () => {
       try {
-        await invoke('force_exit');
+        await recorder.forceExit();
       } catch (error) {
         console.error('Falha ao encerrar o app:', error);
       }
@@ -290,8 +288,7 @@ async function handleChangeOutputDir() {
   if (state.isRecording) return;
 
   try {
-    const { open } = window.__TAURI__.dialog;
-    const selected = await open({
+    const selected = await recorder.openDialog({
       directory: true,
       title: 'Selecionar pasta de destino',
     });

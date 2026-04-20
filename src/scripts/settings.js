@@ -88,8 +88,7 @@ async function init() {
 
     // Escuta as atualizações de outras janelas
     try {
-      const { listen } = window.__TAURI__.event;
-      await listen('config-updated', (event) => {
+      await Recorder.listen('config-updated', (event) => {
         console.log('Configurações: configuração atualizada pelo backend:', event.payload);
         state.config = event.payload;
         updateUIFromConfig();
@@ -513,8 +512,7 @@ async function resetToDefaults() {
  */
 async function selectOutputDirectory() {
   try {
-    const { open } = window.__TAURI__.dialog;
-    const selected = await open({
+    const selected = await Recorder.openDialog({
       directory: true,
       title: 'Selecionar pasta de destino',
     });
@@ -552,9 +550,7 @@ async function closeWindow({ force = false } = {}) {
   }
 
   try {
-    const tauriWindow =
-      window.__TAURI__?.webviewWindow?.getCurrentWebviewWindow?.() ||
-      window.__TAURI__?.window?.getCurrentWindow?.();
+    const tauriWindow = Recorder.getCurrentWindow();
 
     if (tauriWindow?.hide) {
       await tauriWindow.hide();

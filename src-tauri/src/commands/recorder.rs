@@ -241,6 +241,18 @@ pub fn start_recording(
     fps: Option<u32>,
     scale_factor: Option<u32>,
 ) -> Result<StartResult, String> {
+    // Validação de dependências (Hard Block no Linux)
+    #[cfg(target_os = "linux")]
+    {
+        use crate::services::capture::linux::validate_linux_system_deps;
+        if let Err(missing) = validate_linux_system_deps() {
+            return Err(format!(
+                "Não é possível gravar: dependências do sistema ausentes ({}). Por favor, instale-as para continuar.",
+                missing.join(", ")
+            ));
+        }
+    }
+
     // Sincronização e verificação de corridas (Race Condition guard)
     let is_currently_recording = state.recording();
     {
