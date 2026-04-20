@@ -38,24 +38,23 @@ jobs:
           const diff = fs.readFileSync('pr_diff.txt', 'utf8').substring(0, 25000);
           const apiKey = process.env.GEMINI_API_KEY;
           
-          // Modelo solicitado: gemma-4-31b-it (ou gemini-1.5-flash para velocidade)
           const model = "gemma-4-31b-it"; 
           const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
           const promptText = `Você é um revisor de código sênior. Analise o seguinte DIFF de um Pull Request e forneça um review detalhado em Markdown (Português do Brasil).
 
-ESTRUTURA DO REVIEW:
-1. **Resumo das Features**: O que mudou?
-2. **Análise Geral**: Visão técnica da mudança.
-3. **Pontos Positivos**: O que foi bem feito.
-4. **Pontos Negativos/Problemas**: Bugs potenciais ou má prática.
-5. **Pontos de Atenção**: Sugestões de melhoria ou riscos.
+          ESTRUTURA DO REVIEW:
+          1. **Resumo das Features**: O que mudou?
+          2. **Análise Geral**: Visão técnica da mudança.
+          3. **Pontos Positivos**: O que foi bem feito.
+          4. **Pontos Negativos/Problemas**: Bugs potenciais ou má prática.
+          5. **Pontos de Atenção**: Sugestões de melhoria ou riscos.
 
-REGRA CRÍTICA: 
-Se o código for de alta qualidade, não tiver erros claros, não quebrar o projeto e propuser atualizações interessantes, responda APENAS com o emoji "👍" e nada mais.
+          REGRA CRÍTICA: 
+          Se o código for de alta qualidade, não tiver erros claros, não quebrar o projeto e propuser atualizações interessantes, responda APENAS com o emoji "👍" e nada mais.
 
-DIFF:
-${diff}`;
+          DIFF:
+          ${diff}`;
 
           const payload = JSON.stringify({
             contents: [{ parts: [{ text: promptText }] }]
@@ -76,7 +75,7 @@ ${diff}`;
               if (res.statusCode !== 200) {
                 console.error(`Erro na API (${res.statusCode}):`, responseData);
                 fs.writeFileSync('review_result.md', `⚠️ Erro na análise da AI (Status ${res.statusCode}).`);
-                process.exit(0); // Não quebra o workflow, mas avisa
+                process.exit(0);
               }
               try {
                 const json = JSON.parse(responseData);
