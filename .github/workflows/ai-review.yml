@@ -35,10 +35,10 @@ jobs:
           const fs = require('fs');
           const https = require('https');
 
-          const diff = fs.readFileSync('pr_diff.txt', 'utf8').substring(0, 25000);
+          const diff = fs.readFileSync('pr_diff.txt', 'utf8').substring(0, 2550000);
           const apiKey = process.env.GEMINI_API_KEY;
           
-          const model = "gemini-3.1-flash-lite-preview"; 
+          const model = "gemma-4-31b-it";
           const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
           // [MUDANÇA CRÍTICA]: Uso de system_instruction para isolar persona e regras
