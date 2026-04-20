@@ -1,5 +1,14 @@
+/**
+ * Rec Corder — Tela de Abertura (Splash)
+ * Gerencia a inicialização inicial, verificação do FFmpeg e detecção de hardware.
+ */
+
 const { invoke } = window.__TAURI__.core;
 
+/**
+ * Realiza as verificações de inicialização.
+ * @returns {Promise<void>}
+ */
 async function bootstrap() {
   const statusText = document.getElementById('statusText');
   const splashVersion = document.getElementById('splashVersion');
@@ -8,7 +17,7 @@ async function bootstrap() {
     const version = await window.__TAURI__.app.getVersion();
     if (splashVersion) splashVersion.textContent = `v${version}`;
   } catch (e) {
-    console.warn('Failed to get version for splash:', e);
+    console.warn('Falha ao obter a versão para a tela de abertura:', e);
   }
 
   try {
@@ -39,7 +48,7 @@ async function bootstrap() {
 
     await new Promise(r => setTimeout(r, 800));
   } catch (err) {
-    console.error('Falha na deteccao:', err);
+    console.error('Falha na detecção:', err);
     statusText.style.color = '#ffaa00';
     statusText.textContent = 'Fallback: software (libx264)';
 
@@ -50,7 +59,7 @@ async function bootstrap() {
   try {
     await invoke('finish_splash');
   } catch (e) {
-    console.error('Erro na transicao de janela:', e);
+    console.error('Erro na transição de janela:', e);
   }
 }
 

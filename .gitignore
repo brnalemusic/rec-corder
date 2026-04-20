@@ -47,6 +47,10 @@ build/
 scripts/*
 !scripts/
 !scripts/sync.js
+!scripts/build-cli.js
+!scripts/download-python.js
+!scripts/generate-logo-ansi.py
+!scripts/run-cli-dev.js
 !scripts/generate-installer-assets.js
 !scripts/generate-installer-assets.ps1
 dxdiag.txt
@@ -68,3 +72,17 @@ desktop.ini
 *.sw?
 *.bak
 *.tmp
+
+# AI (Vibe Coding) Artifacts
+GEMINI.md
+
+# --- Python & CLI ---
+__pycache__/
+cli/__pycache__/
+python_env/
+cli/rec_corder_lib.pyd
+target-cli/
+*.pcm
+*.tmp
+temp_audio_*
+/src-tauri/python_env/

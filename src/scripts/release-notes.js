@@ -1,14 +1,23 @@
+/**
+ * Rec Corder — Notas de Lançamento
+ * Lida com a busca e renderização das notas de lançamento via Markdown.
+ */
+
 import * as recorder from './recorder.js';
 
-// Elements
+// Elementos
 const versionSubtitle = document.getElementById('version-subtitle');
 const loading = document.getElementById('loading');
 const contentArea = document.getElementById('content-area');
 const changelogContent = document.getElementById('changelog-content');
 
+/**
+ * Inicializa a janela de notas de lançamento.
+ * @returns {Promise<void>}
+ */
 async function init() {
   try {
-    // Configure marked for tables and GFM
+    // Configura o Marked para tabelas e GFM (GitHub Flavored Markdown)
     if (window.marked) {
       const options = {
         gfm: true,
@@ -33,7 +42,7 @@ async function init() {
     if (body) {
       let processedBody = body;
       
-      // Simple emoji replacement support
+      // Suporte simples para substituição de emojis
       const emojiMap = {
         ':white_check_mark:': '✅',
         ':sparkles:': '✨',
@@ -52,10 +61,10 @@ async function init() {
       });
 
       if (window.marked) {
-        // Parse markdown to HTML
+        // Converte markdown para HTML
         let html = window.marked.parse(processedBody);
         
-        // Post-process GitHub Admonitions (Alerts)
+        // Pós-processa Alertas (Admonitions) do GitHub
         const admonitionRegex = /<blockquote>\s*<p>\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/i;
         
         if (admonitionRegex.test(html)) {
@@ -74,14 +83,14 @@ async function init() {
               const type = match[1].toLowerCase();
               const title = match[1].toUpperCase();
               
-              // Remove the [!TYPE] tag from the first paragraph
+              // Remove a tag [!TYPE] do primeiro parágrafo
               firstP.innerHTML = firstP.innerHTML.replace(/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\](\s*<br>)?/i, '');
               
-              // Create the alert container
+              // Cria o container de alerta
               const alertDiv = document.createElement('div');
               alertDiv.className = `markdown-alert markdown-alert-${type}`;
               
-              // Define Icons
+              // Define os ícones
               let icon = '';
               switch(type) {
                 case 'note':
@@ -115,7 +124,7 @@ async function init() {
 
         changelogContent.innerHTML = html;
         
-        // Trigger Prism highlighting
+        // Ativa o highlight do Prism
         if (window.Prism) {
           window.Prism.highlightAllUnder(changelogContent);
         }
@@ -126,7 +135,7 @@ async function init() {
       loading.innerHTML = '<p>Não foi possível carregar as notas de lançamento para esta versão.</p>';
     }
   } catch (error) {
-    console.error('Error loading release notes:', error);
+    console.error('Erro ao carregar as notas de lançamento:', error);
     loading.innerHTML = '<p>Erro ao carregar as notas de lançamento.</p>';
   }
 }

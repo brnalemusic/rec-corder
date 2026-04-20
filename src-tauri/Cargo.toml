@@ -1,6 +1,6 @@
 [package]
 name = "rec-corder"
-version = "1.0.0-beta.3"
+version = "1.0.0-beta.4"
 description = "Ultra-light screen recorder"
 authors = ["Breno"]
 edition = "2021"
@@ -15,7 +15,11 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
+[features]
+python = ["pyo3"]
+
 [dependencies]
+pyo3 = { version = "0.21.0", features = ["extension-module", "abi3-py310"], optional = true }
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"

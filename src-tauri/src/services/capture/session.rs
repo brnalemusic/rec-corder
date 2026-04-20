@@ -25,13 +25,15 @@ pub const MIN_VALID_OUTPUT_BYTES: u64 = 4 * 1024;
 pub const STOP_POLL_INTERVAL_MS: u64 = 100;
 pub const STOP_MAX_WAIT_MS: u64 = 30_000;
 
-/// Configuration for the webcam overlay, passed from the frontend config.
+/// Configuração de overlay da webcam, vinda da configuração do frontend.
 pub struct WebcamOverlayConfig {
     pub device_name: String,
     pub position: String,
     pub size_percent: u32,
 }
 
+/// Sessão ativa de captura de tela e áudio.
+/// // [IMPORTANTE] Controla o ciclo de vida do processo FFmpeg e os arquivos de áudio locais.
 pub struct CaptureSession {
     process: Child,
     final_output_path: PathBuf,
@@ -46,6 +48,7 @@ pub struct CaptureSession {
     system_audio_capture: Option<NativeAudioCapture>,
 }
 
+/// Constrói o caminho para o arquivo de log do FFmpeg.
 pub fn build_log_path(output_path: &PathBuf) -> PathBuf {
     let mut log_dir = std::env::temp_dir();
     log_dir.push("RecCorderLogs");
@@ -59,6 +62,7 @@ pub fn build_log_path(output_path: &PathBuf) -> PathBuf {
     log_dir.join(format!("{stem}.ffmpeg.log"))
 }
 
+/// Constrói um caminho temporário para arquivos de mídia intermediários.
 pub fn build_temp_media_path(output_path: &PathBuf, suffix: &str, extension: &str) -> PathBuf {
     let parent = output_path
         .parent()
@@ -73,6 +77,7 @@ pub fn build_temp_media_path(output_path: &PathBuf, suffix: &str, extension: &st
     parent.join(format!("{stem}.{suffix}.{extension}"))
 }
 
+/// Lê as últimas linhas do arquivo de log do FFmpeg para debug.
 pub fn read_log_tail(log_path: &PathBuf) -> String {
     let Ok(contents) = fs::read_to_string(log_path) else {
         return String::new();
@@ -90,11 +95,13 @@ pub fn read_log_tail(log_path: &PathBuf) -> String {
         .join(" | ")
 }
 
+/// Limpa os arquivos parciais de uma tentativa falha de captura.
 pub fn cleanup_failed_attempt(output_path: &PathBuf, log_path: &PathBuf) {
     let _ = fs::remove_file(output_path);
     let _ = fs::remove_file(log_path);
 }
 
+/// Constrói a string de filtro do FFmpeg para mixagem de áudio.
 pub fn build_audio_filter(input_index: usize, track: &AudioTrack, label: &str) -> String {
     let channel_filter = if track.channels <= 1 {
         "pan=stereo|c0=c0|c1=c0"
@@ -107,12 +114,14 @@ pub fn build_audio_filter(input_index: usize, track: &AudioTrack, label: &str) -
     )
 }
 
+/// Remove arquivos PCM temporários após o mux final.
 pub fn cleanup_audio_tracks(tracks: &[AudioTrack]) {
     for track in tracks {
         let _ = fs::remove_file(&track.path);
     }
 }
 
+/// Inicia a captura de áudio nativo (Microfone e Loopback) paralelamente.
 pub fn start_audio_captures(
     output_path: &PathBuf,
     mic_device_id: Option<&String>,
@@ -150,6 +159,7 @@ pub fn start_audio_captures(
 }
 
 impl CaptureSession {
+    /// Inicia uma nova sessão de captura delegando para a estratégia de encoder escolhida.
     pub fn start(
         output_path: PathBuf,
         monitor_index: usize,
@@ -212,6 +222,8 @@ impl CaptureSession {
         }
     }
 
+    /// Configura e invoca o processo filho do FFmpeg com os argumentos de gravação.
+    /// // [IMPORTANTE] A injeção de pipes stdin/stderr é crítica para não travar a aplicação base.
     fn start_with_strategy(
         ffmpeg_path: &PathBuf,
         final_output_path: PathBuf,
@@ -280,13 +292,12 @@ impl CaptureSession {
             fps,
         );
 
-        // Add webcam input if configured (must come after screen input, before encoder args)
+        // Adiciona input da webcam se configurado
         if let Some(wc) = webcam_config {
             append_webcam_input(&mut cmd, &wc.device_name);
         }
 
-        // When webcam is active, we use -filter_complex instead of -vf
-        // to compose the overlay. Otherwise, use the standard encoder args.
+        // Quando a webcam está ativa, usamos filter_complex para compor overlay.
         if let Some(wc) = webcam_config {
             let pixel_format = match strategy {
                 EncoderStrategy::AmdAmf => "nv12",
@@ -297,7 +308,7 @@ impl CaptureSession {
 
             cmd.args(["-filter_complex", &filter_complex, "-map", "[out]"]);
 
-            // Encoder codec and quality settings (without -vf, which is in filter_complex)
+            // Encoder codec e qualidade (sem -vf, que está no filter_complex)
             match strategy {
                 EncoderStrategy::AmdAmf => {
                     cmd.args(["-c:v", "h264_amf", "-usage", "lowlatency", "-quality", "speed", "-rc", "cbr", "-b:v", "5M", "-pix_fmt", "nv12"]);
@@ -380,6 +391,7 @@ impl CaptureSession {
         Ok(session)
     }
 
+    /// Verifica se o FFmpeg não fechou prematuramente após o spawn.
     fn ensure_started(&mut self) -> Result<(), RecorderError> {
         std::thread::sleep(Duration::from_millis(500));
 
@@ -405,6 +417,7 @@ impl CaptureSession {
         Ok(())
     }
 
+    /// Valida se o arquivo gerado possui um tamanho mínimo aceitável.
     fn validate_output(&self) -> Result<(), RecorderError> {
         let file_size = fs::metadata(&self.video_output_path)
             .map(|metadata| metadata.len())
@@ -428,6 +441,7 @@ impl CaptureSession {
         Ok(())
     }
 
+    /// Para e mescla as trilhas de áudio nativo geradas (PCM).
     fn finalize_audio_tracks(&mut self) -> Result<Vec<AudioTrack>, RecorderError> {
         let mut tracks = Vec::new();
 
@@ -452,6 +466,8 @@ impl CaptureSession {
         Ok(tracks)
     }
 
+    /// Realiza o mux (combinação) do vídeo finalizado com as trilhas de áudio gravadas.
+    /// // [IMPORTANTE] Este processo é bloqueante e I/O bound.
     fn mux_native_audio(&self, tracks: &[AudioTrack]) -> Result<(), RecorderError> {
         let ffmpeg_path = resolve_ffmpeg_path()?;
         let mux_log_path = build_temp_media_path(&self.final_output_path, "mux", "log");
@@ -561,6 +577,8 @@ impl CaptureSession {
         Ok(())
     }
 
+    /// Envia um sinal para encerramento gracioso (`q`) pro FFmpeg e aguarda a finalização.
+    /// // [IMPORTANTE] Aguarda o término de streams de I/O em polling.
     pub fn stop(&mut self) -> Result<(), RecorderError> {
         if let Some(capture) = &self.mic_capture {
             capture.request_stop();
@@ -643,6 +661,7 @@ impl CaptureSession {
         )))
     }
 
+    /// Mata agressivamente o processo do FFmpeg e de áudio (Force exit).
     pub fn kill(&mut self) {
         if let Some(capture) = &self.mic_capture {
             capture.request_stop();

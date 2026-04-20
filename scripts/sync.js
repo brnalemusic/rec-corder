@@ -129,6 +129,9 @@ function sync() {
   syncTextTargets(version);
   syncInstallerAssets();
 
+  console.log('Verificando dependencias do CLI (Python)...');
+  spawnSync(process.execPath, [path.join(rootDir, 'scripts', 'download-python.js')], { stdio: 'inherit' });
+
   console.log('Sincronizacao concluida com sucesso.');
 }
 

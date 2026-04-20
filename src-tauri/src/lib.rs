@@ -1,6 +1,8 @@
 mod commands;
 mod config;
 mod errors;
+#[cfg(feature = "python")]
+mod python_api;
 mod services;
 mod state;
 
@@ -11,6 +13,8 @@ use state::AppState;
 use commands::updater::{self, PendingUpdate};
 use tauri::Manager;
 
+/// Função de entrada principal que inicializa o contexto e os plugins do Tauri.
+/// // [IMPORTANTE] Configura o AppState e o gerador de eventos globais.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -25,6 +29,7 @@ pub fn run() {
         .manage::<SessionHandle>(Mutex::new(None))
         .manage(PendingUpdate(Mutex::new(None)))
         .on_window_event(|window, event| {
+            // Comportamento customizado ao fechar as janelas
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 if window.label() == "settings" {
                     #[cfg(target_os = "windows")]
@@ -63,5 +68,5 @@ pub fn run() {
             updater::open_link,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .expect("erro enquanto rodava a aplicacao tauri");
 }

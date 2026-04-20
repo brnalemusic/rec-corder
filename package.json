@@ -1,7 +1,7 @@
 {
   "name": "rec-corder",
   "private": true,
-  "version": "1.0.0-beta.3",
+  "version": "1.0.0-beta.4",
   "type": "module",
   "author": "Breno",
   "license": "MIT",
@@ -9,6 +9,7 @@
   "description": "Ultra-light screen recorder",
   "scripts": {
     "tauri": "tauri",
+    "cli:dev": "node scripts/run-cli-dev.js",
     "sync": "node scripts/sync.js",
     "installer:assets": "node scripts/generate-installer-assets.js",
     "build:release": "npx tauri build",
