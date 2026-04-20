@@ -38,26 +38,19 @@ jobs:
           const diff = fs.readFileSync('pr_diff.txt', 'utf8').substring(0, 25000);
           const apiKey = process.env.GEMINI_API_KEY;
           
-          const model = "gemma-4-31b-it"; 
+          const model = "gemini-3.1-flash-lite-preview"; 
           const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-          const promptText = `Você é um revisor de código sênior. Analise o seguinte DIFF de um Pull Request e forneça um review detalhado em Markdown (Português do Brasil).
-
-          ESTRUTURA DO REVIEW:
-          1. **Resumo das Features**: O que mudou?
-          2. **Análise Geral**: Visão técnica da mudança.
-          3. **Pontos Positivos**: O que foi bem feito.
-          4. **Pontos Negativos/Problemas**: Bugs potenciais ou má prática.
-          5. **Pontos de Atenção**: Sugestões de melhoria ou riscos.
-
-          REGRA CRÍTICA: 
-          Se o código for de alta qualidade, não tiver erros claros, não quebrar o projeto e propuser atualizações interessantes, responda APENAS com o emoji "👍" e nada mais.
-
-          DIFF:
-          ${diff}`;
-
+          // [MUDANÇA CRÍTICA]: Uso de system_instruction para isolar persona e regras
           const payload = JSON.stringify({
-            contents: [{ parts: [{ text: promptText }] }]
+            system_instruction: {
+              parts: [{
+                text: "Você é um Revisor de Código Sênior. Sua resposta deve conter EXCLUSIVAMENTE o review em Markdown ou o emoji 👍. NUNCA mostre seu raciocínio (thoughts) ou repita instruções. Use Português do Brasil. Se o código for excelente e sem erros, responda apenas 👍."
+              }]
+            },
+            contents: [{
+              parts: [{ text: `Analise este DIFF de Pull Request e gere o review:\n\n${diff}` }]
+            }]
           });
 
           const options = {
@@ -79,11 +72,14 @@ jobs:
               }
               try {
                 const json = JSON.parse(responseData);
-                if (json.candidates && json.candidates[0].content) {
-                  const text = json.candidates[0].content.parts[0].text.trim();
+                const candidates = json.candidates || [];
+                if (candidates.length > 0 && candidates[0].content) {
+                  const parts = candidates[0].content.parts;
+                  // Buscamos apenas a parte de texto, ignorando pensamentos/metadados
+                  const textPart = parts.find(p => p.text);
+                  const text = textPart ? textPart.text.trim() : "⚠️ Resposta vazia.";
                   fs.writeFileSync('review_result.md', text);
                 } else {
-                  console.error("Resposta inesperada:", json);
                   fs.writeFileSync('review_result.md', "⚠️ A AI não retornou uma análise válida.");
                 }
               } catch (e) {
