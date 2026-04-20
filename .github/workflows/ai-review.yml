@@ -31,7 +31,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           # Script para chamar a API do Gemini e processar o review
-          cat << 'EOF' > review_script.js
+          cat << 'EOF' > review_script.cjs
           const fs = require('fs');
           const https = require('https');
 
@@ -92,7 +92,7 @@ jobs:
           req.end();
           EOF
 
-          node review_script.js
+          node review_script.cjs
 
       - name: Post Comment
         if: success()
