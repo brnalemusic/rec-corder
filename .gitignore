@@ -75,6 +75,7 @@ desktop.ini
 
 # AI (Vibe Coding) Artifacts
 GEMINI.md
+model.py
 
 # --- Python & CLI ---
 __pycache__/

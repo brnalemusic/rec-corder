@@ -32,7 +32,7 @@ impl RecorderSession {
         let path = PathBuf::from(output_path);
 
         let monitor = capture::resolve_monitor_index(monitor_index)
-            .ok_or_else(|| pyo3::exceptions::PyValueError::new_err(format!("Indice de monitor invalido: {}", monitor_index)))?;
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("Indice de monitor invalido: {}", e)))?;
         
         let session = CaptureSession::start(
             path,

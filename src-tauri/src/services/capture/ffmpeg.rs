@@ -200,6 +200,7 @@ pub fn build_video_input(
     {
         let _ = monitor_handle;
         let _ = window_handle;
+        let _ = fps;
         
         let mut x = 0;
         let mut y = 0;

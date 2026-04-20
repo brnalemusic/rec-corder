@@ -11,7 +11,6 @@ use commands::ffmpeg;
 use parking_lot::Mutex;
 use state::AppState;
 use commands::updater::{self, PendingUpdate};
-use tauri::Manager;
 
 /// Função de entrada principal que inicializa o contexto e os plugins do Tauri.
 /// // [IMPORTANTE] Configura o AppState e o gerador de eventos globais.
@@ -31,6 +30,7 @@ pub fn run() {
         .on_window_event(|window, event| {
             // Comportamento customizado ao fechar as janelas
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let _ = api;
                 if window.label() == "settings" {
                     #[cfg(target_os = "windows")]
                     {

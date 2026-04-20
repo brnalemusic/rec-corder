@@ -1,7 +1,6 @@
 use crate::errors::RecorderError;
 use serde::Serialize;
 use std::fs::{self, File};
-use std::io::Write;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
