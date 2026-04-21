@@ -98,8 +98,8 @@ pub async fn show_updater(app: AppHandle<Wry>, version: String, body: Option<Str
 #[tauri::command]
 pub async fn get_release_notes(app: AppHandle<Wry>, version: String) -> Result<Option<String>, String> {
     let _ = version;
+    let _ = app;
 
-    // 1. Em desenvolvimento, prioriza o arquivo na raiz do projeto (fora de src-tauri)
     #[cfg(debug_assertions)]
     {
         if let Ok(content) = std::fs::read_to_string("../UPDATE.md") {
@@ -109,29 +109,16 @@ pub async fn get_release_notes(app: AppHandle<Wry>, version: String) -> Result<O
         if let Ok(content) = std::fs::read_to_string("../update.md") {
             return Ok(Some(content));
         }
+        Ok(None)
     }
 
-    // 2. Tenta usar o resolvedor de caminhos do Tauri v2 (Recomendado para Produção)
-    use tauri::path::BaseDirectory;
-    if let Ok(resource_path) = app.path().resolve("UPDATE.md", BaseDirectory::Resource) {
-        if let Ok(content) = std::fs::read_to_string(&resource_path) {
-            return Ok(Some(content));
-        }
+    #[cfg(not(debug_assertions))]
+    {
+        // Em produção, o UPDATE.md é embutido diretamente no binário durante a compilação
+        // Isso resolve o problema de caminhos relativos ao empacotar para diferentes plataformas.
+        let content = include_str!("../../../UPDATE.md");
+        Ok(Some(content.to_string()))
     }
-
-    // 3. Fallback para lowercase no resource resolver
-    if let Ok(resource_path) = app.path().resolve("update.md", BaseDirectory::Resource) {
-        if let Ok(content) = std::fs::read_to_string(&resource_path) {
-            return Ok(Some(content));
-        }
-    }
-
-    // 4. Fallback final para o diretório atual do binário
-    if let Ok(content) = std::fs::read_to_string("UPDATE.md") {
-        return Ok(Some(content));
-    }
-
-    Ok(None)
 }
 
 #[tauri::command]

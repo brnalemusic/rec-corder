@@ -198,8 +198,20 @@ pub fn finish_splash(app: AppHandle) -> Result<(), String> {
     if let Some(main_window) = app.get_webview_window("main") {
         main_window.show().map_err(|e| e.to_string())?;
         main_window.set_focus().map_err(|e| e.to_string())?;
+
+        // Workaround para Linux Wayland/GTK onde as decorações da janela (botão X) 
+        // ficam sem hover/clique após o .show() se a janela foi criada oculta.
+        #[cfg(target_os = "linux")]
+        {
+            let _ = main_window.set_resizable(false);
+            let _ = main_window.set_resizable(true);
+            if let Ok(size) = main_window.outer_size() {
+                let _ = main_window.set_size(tauri::Size::Physical(tauri::PhysicalSize { width: size.width, height: size.height + 1 }));
+                let _ = main_window.set_size(tauri::Size::Physical(size));
+            }
+        }
     } else {
-        let _ = tauri::WebviewWindowBuilder::new(
+        let main_window = tauri::WebviewWindowBuilder::new(
             &app,
             "main",
             tauri::WebviewUrl::App("index.html".into()),
@@ -213,6 +225,17 @@ pub fn finish_splash(app: AppHandle) -> Result<(), String> {
         .center()
         .build()
         .map_err(|e| e.to_string())?;
+
+        // Aplicamos o mesmo hack caso a janela seja criada dinamicamente aqui
+        #[cfg(target_os = "linux")]
+        {
+            let _ = main_window.set_resizable(false);
+            let _ = main_window.set_resizable(true);
+            if let Ok(size) = main_window.outer_size() {
+                let _ = main_window.set_size(tauri::Size::Physical(tauri::PhysicalSize { width: size.width, height: size.height + 1 }));
+                let _ = main_window.set_size(tauri::Size::Physical(size));
+            }
+        }
     }
     if let Some(splash_window) = app.get_webview_window("splash") {
         splash_window.close().map_err(|e| e.to_string())?;
@@ -421,4 +444,102 @@ pub fn set_output_dir(app: AppHandle, state: State<'_, AppState>, path: String) 
 pub fn check_crash_recovery(state: State<'_, AppState>) -> Option<String> {
     let output_dir = state.output_dir.lock().clone();
     watchdog::check_crash_recovery(&output_dir).map(|p| p.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+pub fn check_linux_deps() -> Result<Vec<String>, String> {
+    #[cfg(target_os = "linux")]
+    {
+        use crate::services::capture::linux::validate_linux_system_deps;
+        match validate_linux_system_deps() {
+            Ok(_) => Ok(vec![]),
+            Err(missing) => Ok(missing),
+        }
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        Ok(vec![])
+    }
+}
+
+#[tauri::command]
+pub fn install_linux_deps(app_handle: AppHandle) -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    {
+        use std::process::Command;
+        use std::io::Write;
+        
+        let exe_path = std::env::current_exe().unwrap_or_default();
+        let exe_path_str = exe_path.to_string_lossy().to_string();
+        
+        let script_content = format!(
+r#"#!/bin/bash
+echo "============================================="
+echo " Instalando dependências do RecCorder... "
+echo "============================================="
+echo ""
+echo "O aplicativo precisa de permissão para instalar pacotes essenciais de gravação."
+echo ""
+
+if command -v apt-get &> /dev/null; then
+    sudo apt-get update
+    sudo apt-get install -y ffmpeg x11-xserver-utils wireplumber pulseaudio-utils gawk
+elif command -v dnf &> /dev/null; then
+    sudo dnf install -y ffmpeg xrandr wireplumber pulseaudio-utils gawk
+elif command -v pacman &> /dev/null; then
+    sudo pacman -Sy --noconfirm ffmpeg xorg-xrandr wireplumber libpulse gawk
+elif command -v zypper &> /dev/null; then
+    sudo zypper install -y ffmpeg xrandr wireplumber pulseaudio-utils gawk
+else
+    echo "Gerenciador de pacotes não suportado. Instale manualmente: ffmpeg, xrandr, wpctl, pactl, awk."
+    read -p "Pressione ENTER para sair..."
+    exit 1
+fi
+
+echo ""
+echo "Instalação concluída! Reiniciando o RecCorder..."
+sleep 2
+
+nohup "{}" > /dev/null 2>&1 &
+exit 0
+"#,
+            exe_path_str
+        );
+
+        let script_path = "/tmp/reccorder_install_deps.sh";
+        if let Ok(mut file) = std::fs::File::create(script_path) {
+            let _ = file.write_all(script_content.as_bytes());
+            let _ = Command::new("chmod").arg("+x").arg(script_path).status();
+        }
+
+        // Tenta abrir diferentes emuladores de terminal
+        let terminals = ["x-terminal-emulator", "gnome-terminal", "konsole", "xfce4-terminal", "alacritty", "kitty", "xterm"];
+        let mut spawned = false;
+        
+        for term in terminals {
+            let mut cmd = Command::new(term);
+            if term == "gnome-terminal" {
+                cmd.arg("--").arg(script_path);
+            } else {
+                cmd.arg("-e").arg(script_path);
+            }
+            
+            if cmd.spawn().is_ok() {
+                spawned = true;
+                break;
+            }
+        }
+
+        if !spawned {
+            return Err("Nenhum emulador de terminal compatível encontrado. Instale as dependências manualmente.".into());
+        }
+
+        app_handle.exit(0);
+        Ok(())
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = app_handle;
+        Err("Comando válido apenas no Linux.".into())
+    }
 }

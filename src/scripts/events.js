@@ -91,6 +91,27 @@ export function bindEvents() {
 
   dom.closeExitModal?.addEventListener('click', hideExitModal);
   dom.cancelExitBtn?.addEventListener('click', hideExitModal);
+
+  // Modal de dependências do Linux
+  const hideLinuxDepsModal = () => {
+    dom.linuxDepsModalBackdrop?.classList.add('hidden');
+  };
+
+  dom.closeLinuxDepsModal?.addEventListener('click', hideLinuxDepsModal);
+  dom.cancelLinuxDepsBtn?.addEventListener('click', hideLinuxDepsModal);
+  
+  dom.confirmLinuxDepsBtn?.addEventListener('click', async () => {
+    try {
+      dom.confirmLinuxDepsBtn.disabled = true;
+      dom.confirmLinuxDepsBtn.textContent = 'Abrindo terminal...';
+      await recorder.installLinuxDeps();
+    } catch (e) {
+      console.error('Falha ao instalar dependências:', e);
+      alert('Erro ao tentar instalar as dependências: ' + e);
+      dom.confirmLinuxDepsBtn.disabled = false;
+      dom.confirmLinuxDepsBtn.textContent = 'Instalar e Reiniciar';
+    }
+  });
 }
 
 /**

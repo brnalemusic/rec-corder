@@ -77,6 +77,8 @@ pub fn run() {
             updater::show_release_notes,
             updater::install_update,
             updater::open_link,
+            recorder::check_linux_deps,
+            recorder::install_linux_deps,
         ])
         .run(tauri::generate_context!())
         .expect("erro enquanto rodava a aplicacao tauri");

@@ -185,6 +185,19 @@ async function init() {
   } catch (e) {
     console.error('Falha ao checar atualizações:', e);
   }
+
+  // Checa por dependências no Linux
+  try {
+    const missing = await recorder.checkLinuxDeps();
+    if (missing && missing.length > 0) {
+      console.warn('Dependências ausentes no Linux:', missing);
+      if (dom.linuxDepsModalBackdrop) {
+        dom.linuxDepsModalBackdrop.classList.remove('hidden');
+      }
+    }
+  } catch (e) {
+    // Ignora erros (provavelmente não está no Linux)
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);

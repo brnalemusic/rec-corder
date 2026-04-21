@@ -3,7 +3,7 @@
 ; A versao abaixo e mantida em sincronia por scripts/sync.js usando version.txt.
 
 !macro NSIS_HOOK_PREINSTALL
-  DetailPrint "Preparando a instalacao do Rec Corder v1.0.0-beta.5"
+  DetailPrint "Preparando a instalacao do Rec Corder v1.0.0-beta.6"
 !macroend
 
 !macro NSIS_HOOK_POSTINSTALL

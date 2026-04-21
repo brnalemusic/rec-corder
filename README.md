@@ -57,5 +57,5 @@ O Rec Corder é construído com tecnologia de ponta:
 Este projeto é **100% open-source**. Se você encontrar um bug ou tiver uma ideia de recurso, abra uma **Issue** ou envie um **Pull Request**.
 
 <div align="center">
-  <sub>Criado com 🧡 para a comunidade criativa. v1.0.0-beta.5</sub>
+  <sub>Criado com 🧡 para a comunidade criativa. v1.0.0-beta.6</sub>
 </div>

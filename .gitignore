@@ -58,6 +58,7 @@ dxdiag.txt
 pubkey.txt
 check.txt
 GIT_WORKFLOW.md
+cli/rec_corder_lib.so
 
 # --- Editor & OS Specific ---
 .vscode/*
@@ -76,7 +77,7 @@ desktop.ini
 
 # AI (Vibe Coding) Artifacts
 GEMINI*.md
-OPENCLAUDE.md
+OPENCLAUDE*.md
 model.py
 .openclaude-profile.json
 .openclaude
@@ -91,3 +92,7 @@ target-cli/
 *.tmp
 temp_audio_*
 /src-tauri/python_env/
+
+# --- ENVs ---
+.env
+*.pem

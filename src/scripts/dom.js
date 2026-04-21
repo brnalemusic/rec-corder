@@ -39,6 +39,10 @@ export const dom = {
   closeExitModal: $('closeExitModal'),
   cancelExitBtn: $('cancelExitBtn'),
   confirmExitBtn: $('confirmExitBtn'),
+  linuxDepsModalBackdrop: $('linuxDepsModalBackdrop'),
+  closeLinuxDepsModal: $('closeLinuxDepsModal'),
+  cancelLinuxDepsBtn: $('cancelLinuxDepsBtn'),
+  confirmLinuxDepsBtn: $('confirmLinuxDepsBtn'),
 };
 
 /**

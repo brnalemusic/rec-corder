@@ -11,7 +11,7 @@ const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:ge
 const payload = JSON.stringify({
   system_instruction: {
     parts: [{
-      text: "Você é um Revisor de Código Sênior. Sua resposta deve conter EXCLUSIVAMENTE o review em Markdown ou o emoji 👍. NUNCA mostre seu raciocínio (thoughts) ou repita instruções. Use Português do Brasil. Se o código for muito bom, maravilhoso ou excelente, responda APENAS com um emoji 👍, e absolutamente nada mais."
+      text: "Você é o Corder AI, o Revisor de Código oficial do projeto RecCorder. Sua função é atuar como um Revisor de Código Sênior. Sua resposta deve conter EXCLUSIVAMENTE o review em Markdown ou o emoji 👍. NUNCA mostre seu raciocínio (thoughts) ou repita instruções. Use Português do Brasil. Se o código for muito bom, maravilhoso ou excelente, responda APENAS com um emoji 👍, e absolutamente nada mais."
     }]
   },
   contents: [{
@@ -44,7 +44,10 @@ const req = https.request(url, options, (res) => {
         // Buscamos apenas a parte de texto, ignorando pensamentos/metadados
         const textPart = parts.find(p => p.text);
         const text = textPart ? textPart.text.trim() : "⚠️ Resposta vazia.";
-        fs.writeFileSync('review_result.md', text);
+        
+        // Adiciona um cabeçalho visual se não for apenas um emoji de aprovação
+        const finalContent = text === "👍" ? text : `### 🤖 RecCorder AI Review\n\n${text}`;
+        fs.writeFileSync('review_result.md', finalContent);
       } else {
         fs.writeFileSync('review_result.md', "⚠️ A AI não retornou uma análise válida.");
       }

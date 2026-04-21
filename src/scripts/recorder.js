@@ -274,3 +274,18 @@ export async function installUpdate() {
 export async function listCameras() {
   return invoke('list_cameras');
 }
+
+/**
+ * Verifica dependências no Linux.
+ * @returns {Promise<string[]>} Lista de dependências faltando.
+ */
+export async function checkLinuxDeps() {
+  return invoke('check_linux_deps');
+}
+
+/**
+ * Inicia o script de instalação de dependências e reinicia o app.
+ */
+export async function installLinuxDeps() {
+  return invoke('install_linux_deps');
+}
