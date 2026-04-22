@@ -386,7 +386,8 @@ pub async fn stop_recording(
         .lock()
         .as_ref()
         .map(|p| p.to_string_lossy().into_owned())
-        .unwrap_or_default();
+    // Executa a finalização pesada do muxing (FFmpeg IO) em uma thead em blocking
+    let stop_result = tokio::task::spawn_blocking(move || {
 
     let output_dir = state.output_dir.lock().clone();
 
