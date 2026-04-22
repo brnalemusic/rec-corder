@@ -1,14 +1,21 @@
+use crate::errors::RecorderError;
+use crate::services::audio::{
+    AudioCaptureMode, AudioTrack, NativeAudioCapture,
+};
 use super::ffmpeg::{
-    append_encoder_args, append_video_input, append_webcam_input, build_capture_filter,
-    build_ddagrab_input, build_gdigrab_input, build_gfxcapture_input, build_webcam_overlay_filter,
-    resolve_ffmpeg_path, CaptureInput, EncoderStrategy, CREATE_NO_WINDOW,
+    append_common_inputs, append_encoder_args, append_webcam_input,
+    build_webcam_overlay_filter, build_capture_filter, resolve_ffmpeg_path,
+    EncoderStrategy,
 };
 #[cfg(target_os = "windows")]
-use super::windows::enumerate_native_monitors;
-use crate::errors::RecorderError;
-use crate::services::audio::{AudioCaptureMode, AudioTrack, NativeAudioCapture};
+use super::ffmpeg::CREATE_NO_WINDOW;
+#[cfg(target_os = "windows")]
+use super::windows::{
+    enumerate_native_monitors, find_fullscreen_window_on_monitor, CaptureGuardWindow,
+};
 use std::fs::{self, File};
 use std::io::Write;
+#[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
@@ -18,23 +25,30 @@ pub const MIN_VALID_OUTPUT_BYTES: u64 = 4 * 1024;
 pub const STOP_POLL_INTERVAL_MS: u64 = 100;
 pub const STOP_MAX_WAIT_MS: u64 = 30_000;
 
-/// Configuration for the webcam overlay, passed from the frontend config.
+/// Configuração de overlay da webcam, vinda da configuração do frontend.
 pub struct WebcamOverlayConfig {
     pub device_name: String,
     pub position: String,
     pub size_percent: u32,
 }
 
+/// Sessão ativa de captura de tela e áudio.
+/// // [IMPORTANTE] Controla o ciclo de vida do processo FFmpeg e os arquivos de áudio locais.
 pub struct CaptureSession {
     process: Child,
     final_output_path: PathBuf,
     video_output_path: PathBuf,
     log_path: PathBuf,
     encoder_label: &'static str,
+    #[cfg(target_os = "windows")]
+    _capture_guard: Option<CaptureGuardWindow>,
+    #[cfg(not(target_os = "windows"))]
+    _capture_guard: Option<()>,
     mic_capture: Option<NativeAudioCapture>,
     system_audio_capture: Option<NativeAudioCapture>,
 }
 
+/// Constrói o caminho para o arquivo de log do FFmpeg.
 pub fn build_log_path(output_path: &PathBuf) -> PathBuf {
     let mut log_dir = std::env::temp_dir();
     log_dir.push("RecCorderLogs");
@@ -48,6 +62,7 @@ pub fn build_log_path(output_path: &PathBuf) -> PathBuf {
     log_dir.join(format!("{stem}.ffmpeg.log"))
 }
 
+/// Constrói um caminho temporário para arquivos de mídia intermediários.
 pub fn build_temp_media_path(output_path: &PathBuf, suffix: &str, extension: &str) -> PathBuf {
     let parent = output_path
         .parent()
@@ -62,6 +77,7 @@ pub fn build_temp_media_path(output_path: &PathBuf, suffix: &str, extension: &st
     parent.join(format!("{stem}.{suffix}.{extension}"))
 }
 
+/// Lê as últimas linhas do arquivo de log do FFmpeg para debug.
 pub fn read_log_tail(log_path: &PathBuf) -> String {
     let Ok(contents) = fs::read_to_string(log_path) else {
         return String::new();
@@ -79,11 +95,13 @@ pub fn read_log_tail(log_path: &PathBuf) -> String {
         .join(" | ")
 }
 
+/// Limpa os arquivos parciais de uma tentativa falha de captura.
 pub fn cleanup_failed_attempt(output_path: &PathBuf, log_path: &PathBuf) {
     let _ = fs::remove_file(output_path);
     let _ = fs::remove_file(log_path);
 }
 
+/// Constrói a string de filtro do FFmpeg para mixagem de áudio.
 pub fn build_audio_filter(input_index: usize, track: &AudioTrack, label: &str) -> String {
     let channel_filter = if track.channels <= 1 {
         "pan=stereo|c0=c0|c1=c0"
@@ -91,15 +109,19 @@ pub fn build_audio_filter(input_index: usize, track: &AudioTrack, label: &str) -
         "pan=stereo|c0=c0|c1=c1"
     };
 
-    format!("[{input_index}:a]aresample=48000,{channel_filter}[{label}]")
+    format!(
+        "[{input_index}:a]aresample=48000,{channel_filter}[{label}]"
+    )
 }
 
+/// Remove arquivos PCM temporários após o mux final.
 pub fn cleanup_audio_tracks(tracks: &[AudioTrack]) {
     for track in tracks {
         let _ = fs::remove_file(&track.path);
     }
 }
 
+/// Inicia a captura de áudio nativo (Microfone e Loopback) paralelamente.
 pub fn start_audio_captures(
     output_path: &PathBuf,
     mic_device_id: Option<&String>,
@@ -136,77 +158,8 @@ pub fn start_audio_captures(
     Ok((mic_capture, system_capture))
 }
 
-#[cfg(target_os = "windows")]
-fn build_capture_inputs(
-    monitor_index: usize,
-    fps: u32,
-) -> Result<Vec<CaptureInput>, RecorderError> {
-    let monitors = enumerate_native_monitors()?;
-    let monitor = monitors
-        .into_iter()
-        .find(|monitor| monitor.index == monitor_index)
-        .ok_or_else(|| {
-            RecorderError::CaptureInit(format!(
-                "O monitor selecionado ({monitor_index}) nao esta mais disponivel"
-            ))
-        })?;
-
-    let width = (monitor.bounds.right - monitor.bounds.left).max(1);
-    let height = (monitor.bounds.bottom - monitor.bounds.top).max(1);
-    let mut inputs = Vec::new();
-
-    inputs.push(build_gfxcapture_input(
-        Some(monitor.hmonitor),
-        monitor.index,
-        None,
-        fps,
-    ));
-    inputs.push(build_gfxcapture_input(None, monitor.index, None, fps));
-
-    if let Some(output_idx) = monitor.dxgi_output_index {
-        inputs.push(build_ddagrab_input(output_idx, fps));
-    }
-
-    inputs.push(build_gdigrab_input(
-        monitor.bounds.left,
-        monitor.bounds.top,
-        width,
-        height,
-        fps,
-    ));
-
-    Ok(inputs)
-}
-
-#[cfg(not(target_os = "windows"))]
-fn build_capture_inputs(
-    monitor_index: usize,
-    fps: u32,
-) -> Result<Vec<CaptureInput>, RecorderError> {
-    Ok(vec![build_gfxcapture_input(None, monitor_index, None, fps)])
-}
-
 impl CaptureSession {
-    fn build_runtime_exit_message(&self, status_code: Option<i32>, context: &str) -> String {
-        let log_tail = read_log_tail(&self.log_path);
-        let partial_size = fs::metadata(&self.video_output_path)
-            .map(|metadata| metadata.len())
-            .unwrap_or(0);
-
-        format!(
-            "FFmpeg encerrou inesperadamente {} usando {} (codigo {:?}). Arquivo parcial: {} bytes. {}",
-            context,
-            self.encoder_label,
-            status_code,
-            partial_size,
-            if log_tail.is_empty() {
-                format!("Consulte o log em {:?}", self.log_path)
-            } else {
-                format!("Detalhes do FFmpeg: {}", log_tail)
-            }
-        )
-    }
-
+    /// Inicia uma nova sessão de captura delegando para a estratégia de encoder escolhida.
     pub fn start(
         output_path: PathBuf,
         monitor_index: usize,
@@ -244,57 +197,44 @@ impl CaptureSession {
         };
 
         let strategy = EncoderStrategy::from_label(strategy_label);
-        let capture_inputs = build_capture_inputs(monitor_index, fps)?;
-        let mut attempt_errors = Vec::new();
 
-        for capture_input in capture_inputs {
-            match Self::start_with_strategy(
-                &ffmpeg_path,
-                output_path.clone(),
-                video_output_path.clone(),
-                log_path.clone(),
-                mic_device_id.as_ref(),
-                system_audio_device_id.as_ref(),
-                fps,
-                scale_factor,
-                strategy,
-                &capture_input,
-                webcam_config.as_ref(),
-            ) {
-                Ok(session) => return Ok(session),
-                Err(err) => {
-                    println!(
-                        "Falha ao iniciar backend {} com encoder {}: {}",
-                        capture_input.backend.label(),
-                        strategy.label(),
-                        err
-                    );
-                    cleanup_failed_attempt(&video_output_path, &log_path);
-                    let _ = fs::remove_file(build_temp_media_path(&output_path, "mic", "pcm"));
-                    let _ = fs::remove_file(build_temp_media_path(&output_path, "system", "pcm"));
-                    attempt_errors.push(format!("{}: {}", capture_input.backend.label(), err));
-                }
+        match Self::start_with_strategy(
+            &ffmpeg_path,
+            output_path.clone(),
+            video_output_path.clone(),
+            log_path.clone(),
+            monitor_index,
+            mic_device_id.as_ref(),
+            system_audio_device_id.as_ref(),
+            fps,
+            scale_factor,
+            strategy,
+            webcam_config.as_ref(),
+        ) {
+            Ok(session) => Ok(session),
+            Err(err) => {
+                println!("Falha ao iniciar encoder {}: {}", strategy.label(), err);
+                cleanup_failed_attempt(&video_output_path, &log_path);
+                let _ = fs::remove_file(build_temp_media_path(&output_path, "mic", "pcm"));
+                let _ = fs::remove_file(build_temp_media_path(&output_path, "system", "pcm"));
+                Err(RecorderError::CaptureInit(format!("Encoder ({}) falhou ao iniciar: {}", strategy.label(), err)))
             }
         }
-
-        Err(RecorderError::CaptureInit(format!(
-            "Nenhum backend de captura conseguiu iniciar com {}. {}",
-            strategy.label(),
-            attempt_errors.join(" | ")
-        )))
     }
 
+    /// Configura e invoca o processo filho do FFmpeg com os argumentos de gravação.
+    /// // [IMPORTANTE] A injeção de pipes stdin/stderr é crítica para não travar a aplicação base.
     fn start_with_strategy(
         ffmpeg_path: &PathBuf,
         final_output_path: PathBuf,
         video_output_path: PathBuf,
         log_path: PathBuf,
+        monitor_index: usize,
         mic_device_id: Option<&String>,
         system_audio_device_id: Option<&String>,
         fps: u32,
         scale_factor: u32,
         strategy: EncoderStrategy,
-        capture_input: &CaptureInput,
         webcam_config: Option<&WebcamOverlayConfig>,
     ) -> Result<Self, RecorderError> {
         let log_file = File::create(&log_path).map_err(|e| {
@@ -304,90 +244,83 @@ impl CaptureSession {
             ))
         })?;
 
+        #[cfg(target_os = "windows")]
+        let (capture_guard, fullscreen_window, selected_hmonitor) = match enumerate_native_monitors() {
+            Ok(monitors) => {
+                let monitor = monitors.into_iter().find(|m| m.index == monitor_index);
+                let guard = monitor
+                    .as_ref()
+                    .map(|m| CaptureGuardWindow::create(m.bounds))
+                    .transpose();
+                let window = monitor
+                    .as_ref()
+                    .and_then(|m| find_fullscreen_window_on_monitor(m.bounds));
+                let hmonitor = monitor.as_ref().map(|m| m.hmonitor);
+                (guard, window, hmonitor)
+            }
+            Err(err) => {
+                println!(
+                    "Aviso: falha ao enumerar monitores para o modo fullscreen: {}",
+                    err
+                );
+                (Ok(None), None, None)
+            }
+        };
+
+        #[cfg(not(target_os = "windows"))]
+        let (capture_guard, fullscreen_window, selected_hmonitor): (Result<Option<()>, &'static str>, Option<isize>, Option<isize>) = (Ok(None), None, None);
+
+        let capture_guard = capture_guard.map_err(|err| {
+            RecorderError::CaptureInit(format!(
+                "Falha ao preparar a compatibilidade com fullscreen para o monitor selecionado: {}",
+                err
+            ))
+        })?;
+
         let (mic_capture, system_audio_capture) =
             start_audio_captures(&final_output_path, mic_device_id, system_audio_device_id)?;
 
         let mut cmd = Command::new(ffmpeg_path);
+        #[cfg(target_os = "windows")]
         cmd.creation_flags(CREATE_NO_WINDOW);
 
-        append_video_input(&mut cmd, capture_input);
+        append_common_inputs(
+            &mut cmd,
+            selected_hmonitor,
+            monitor_index,
+            fullscreen_window,
+            fps,
+        );
 
-        // Add webcam input if configured (must come after screen input, before encoder args)
+        // Adiciona input da webcam se configurado
         if let Some(wc) = webcam_config {
             append_webcam_input(&mut cmd, &wc.device_name);
         }
 
-        // When webcam is active, we use -filter_complex instead of -vf
-        // to compose the overlay. Otherwise, use the standard encoder args.
+        // Quando a webcam está ativa, usamos filter_complex para compor overlay.
         if let Some(wc) = webcam_config {
             let pixel_format = match strategy {
                 EncoderStrategy::AmdAmf => "nv12",
                 _ => "yuv420p",
             };
-            let base_vf =
-                build_capture_filter(scale_factor, fps, pixel_format, capture_input.backend);
-            let filter_complex =
-                build_webcam_overlay_filter(&base_vf, &wc.position, wc.size_percent);
+            let base_vf = build_capture_filter(scale_factor, fps, pixel_format);
+            let filter_complex = build_webcam_overlay_filter(&base_vf, &wc.position, wc.size_percent);
 
             cmd.args(["-filter_complex", &filter_complex, "-map", "[out]"]);
 
-            // Encoder codec and quality settings (without -vf, which is in filter_complex)
+            // Encoder codec e qualidade (sem -vf, que está no filter_complex)
             match strategy {
                 EncoderStrategy::AmdAmf => {
-                    cmd.args([
-                        "-c:v",
-                        "h264_amf",
-                        "-usage",
-                        "lowlatency",
-                        "-quality",
-                        "speed",
-                        "-rc",
-                        "cbr",
-                        "-b:v",
-                        "5M",
-                        "-pix_fmt",
-                        "nv12",
-                    ]);
+                    cmd.args(["-c:v", "h264_amf", "-usage", "lowlatency", "-quality", "speed", "-rc", "cbr", "-b:v", "5M", "-pix_fmt", "nv12"]);
                 }
                 EncoderStrategy::NvidiaNvenc => {
-                    cmd.args([
-                        "-c:v",
-                        "h264_nvenc",
-                        "-preset",
-                        "p4",
-                        "-tune",
-                        "ull",
-                        "-rc",
-                        "vbr",
-                        "-cq",
-                        "23",
-                        "-pix_fmt",
-                        "yuv420p",
-                    ]);
+                    cmd.args(["-c:v", "h264_nvenc", "-preset", "p4", "-tune", "ull", "-rc", "vbr", "-cq", "23", "-pix_fmt", "yuv420p"]);
                 }
                 EncoderStrategy::IntelQsv => {
-                    cmd.args([
-                        "-c:v",
-                        "h264_qsv",
-                        "-preset",
-                        "veryfast",
-                        "-global_quality",
-                        "23",
-                        "-pix_fmt",
-                        "nv12",
-                    ]);
+                    cmd.args(["-c:v", "h264_qsv", "-preset", "veryfast", "-global_quality", "23", "-pix_fmt", "nv12"]);
                 }
                 EncoderStrategy::SoftwareX264 => {
-                    cmd.args([
-                        "-c:v",
-                        "libx264",
-                        "-preset",
-                        "ultrafast",
-                        "-crf",
-                        "23",
-                        "-pix_fmt",
-                        "yuv420p",
-                    ]);
+                    cmd.args(["-c:v", "libx264", "-preset", "ultrafast", "-crf", "23", "-pix_fmt", "yuv420p"]);
                 }
             }
 
@@ -400,7 +333,6 @@ impl CaptureSession {
                 strategy,
                 fps,
                 scale_factor,
-                capture_input.backend,
                 video_output_path == final_output_path,
             );
             cmd.args(["-map", "0:v:0"]);
@@ -413,9 +345,8 @@ impl CaptureSession {
         cmd.stderr(Stdio::from(log_file));
 
         println!(
-            "Spawning FFmpeg em {:?} com backend {} e encoder {}...",
+            "Spawning FFmpeg em {:?} com encoder {}...",
             ffmpeg_path,
-            capture_input.backend.label(),
             strategy.label()
         );
         let process = match cmd.spawn() {
@@ -440,6 +371,7 @@ impl CaptureSession {
             video_output_path,
             log_path,
             encoder_label: strategy.label(),
+            _capture_guard: capture_guard,
             mic_capture,
             system_audio_capture,
         };
@@ -459,33 +391,33 @@ impl CaptureSession {
         Ok(session)
     }
 
+    /// Verifica se o FFmpeg não fechou prematuramente após o spawn.
     fn ensure_started(&mut self) -> Result<(), RecorderError> {
         std::thread::sleep(Duration::from_millis(500));
 
         if let Some(status) = self.process.try_wait()? {
-            return Err(RecorderError::CaptureInit(self.build_runtime_exit_message(
+            let log_tail = read_log_tail(&self.log_path);
+            let partial_size = fs::metadata(&self.video_output_path)
+                .map(|metadata| metadata.len())
+                .unwrap_or(0);
+
+            return Err(RecorderError::CaptureInit(format!(
+                "FFmpeg encerrou logo apos iniciar com {} (codigo {:?}). Arquivo parcial: {} bytes. {}",
+                self.encoder_label,
                 status.code(),
-                "logo apos iniciar",
+                partial_size,
+                if log_tail.is_empty() {
+                    format!("Consulte o log em {:?}", self.log_path)
+                } else {
+                    format!("Detalhes do FFmpeg: {}", log_tail)
+                }
             )));
         }
 
         Ok(())
     }
 
-    pub fn poll_runtime_error(&mut self) -> Result<Option<String>, RecorderError> {
-        match self.process.try_wait() {
-            Ok(Some(status)) => Ok(Some(self.build_runtime_exit_message(
-                status.code(),
-                "durante a gravacao",
-            ))),
-            Ok(None) => Ok(None),
-            Err(err) => Err(RecorderError::CaptureRuntime(format!(
-                "Falha ao verificar o processo de captura com {}: {}",
-                self.encoder_label, err
-            ))),
-        }
-    }
-
+    /// Valida se o arquivo gerado possui um tamanho mínimo aceitável.
     fn validate_output(&self) -> Result<(), RecorderError> {
         let file_size = fs::metadata(&self.video_output_path)
             .map(|metadata| metadata.len())
@@ -509,16 +441,13 @@ impl CaptureSession {
         Ok(())
     }
 
+    /// Para e mescla as trilhas de áudio nativo geradas (PCM).
     fn finalize_audio_tracks(&mut self) -> Result<Vec<AudioTrack>, RecorderError> {
         let mut tracks = Vec::new();
 
         if let Some(capture) = self.mic_capture.take() {
             let track = capture.finish()?;
-            if fs::metadata(&track.path)
-                .map(|meta| meta.len())
-                .unwrap_or(0)
-                > 0
-            {
+            if fs::metadata(&track.path).map(|meta| meta.len()).unwrap_or(0) > 0 {
                 tracks.push(track);
             } else {
                 let _ = fs::remove_file(&track.path);
@@ -527,11 +456,7 @@ impl CaptureSession {
 
         if let Some(capture) = self.system_audio_capture.take() {
             let track = capture.finish()?;
-            if fs::metadata(&track.path)
-                .map(|meta| meta.len())
-                .unwrap_or(0)
-                > 0
-            {
+            if fs::metadata(&track.path).map(|meta| meta.len()).unwrap_or(0) > 0 {
                 tracks.push(track);
             } else {
                 let _ = fs::remove_file(&track.path);
@@ -541,6 +466,8 @@ impl CaptureSession {
         Ok(tracks)
     }
 
+    /// Realiza o mux (combinação) do vídeo finalizado com as trilhas de áudio gravadas.
+    /// // [IMPORTANTE] Este processo é bloqueante e I/O bound.
     fn mux_native_audio(&self, tracks: &[AudioTrack]) -> Result<(), RecorderError> {
         let ffmpeg_path = resolve_ffmpeg_path()?;
         let mux_log_path = build_temp_media_path(&self.final_output_path, "mux", "log");
@@ -552,6 +479,7 @@ impl CaptureSession {
         })?;
 
         let mut cmd = Command::new(ffmpeg_path);
+        #[cfg(target_os = "windows")]
         cmd.creation_flags(CREATE_NO_WINDOW);
         cmd.args(["-hide_banner", "-loglevel", "error", "-i"]);
         cmd.arg(self.video_output_path.to_string_lossy().to_string());
@@ -649,30 +577,8 @@ impl CaptureSession {
         Ok(())
     }
 
-    fn complete_recording_files(&mut self) -> Result<(), RecorderError> {
-        self.validate_output()?;
-        let tracks = self.finalize_audio_tracks()?;
-
-        if !tracks.is_empty() {
-            self.mux_native_audio(&tracks)?;
-            cleanup_audio_tracks(&tracks);
-            let _ = fs::remove_file(&self.video_output_path);
-        } else if self.video_output_path != self.final_output_path {
-            if self.final_output_path.exists() {
-                let _ = fs::remove_file(&self.final_output_path);
-            }
-            fs::rename(&self.video_output_path, &self.final_output_path).map_err(|e| {
-                RecorderError::CaptureRuntime(format!(
-                    "Falha ao mover o video final sem audio para o destino: {}",
-                    e
-                ))
-            })?;
-        }
-
-        let _ = fs::remove_file(&self.log_path);
-        Ok(())
-    }
-
+    /// Envia um sinal para encerramento gracioso (`q`) pro FFmpeg e aguarda a finalização.
+    /// // [IMPORTANTE] Aguarda o término de streams de I/O em polling.
     pub fn stop(&mut self) -> Result<(), RecorderError> {
         if let Some(capture) = &self.mic_capture {
             capture.request_stop();
@@ -693,14 +599,39 @@ impl CaptureSession {
             match self.process.try_wait() {
                 Ok(Some(status)) => {
                     if !status.success() {
-                        self.complete_recording_files()?;
+                        let log_tail = read_log_tail(&self.log_path);
                         return Err(RecorderError::CaptureRuntime(format!(
-                            "A captura foi interrompida inesperadamente, mas um arquivo parcial foi salvo. {}",
-                            self.build_runtime_exit_message(status.code(), "ao finalizar")
+                            "FFmpeg encerrou com falha ao finalizar usando {} (codigo {:?}). {}",
+                            self.encoder_label,
+                            status.code(),
+                            if log_tail.is_empty() {
+                                format!("Consulte o log em {:?}", self.log_path)
+                            } else {
+                                format!("Detalhes do FFmpeg: {}", log_tail)
+                            }
                         )));
                     }
 
-                    self.complete_recording_files()?;
+                    self.validate_output()?;
+                    let tracks = self.finalize_audio_tracks()?;
+
+                    if !tracks.is_empty() {
+                        self.mux_native_audio(&tracks)?;
+                        cleanup_audio_tracks(&tracks);
+                        let _ = fs::remove_file(&self.video_output_path);
+                    } else if self.video_output_path != self.final_output_path {
+                        if self.final_output_path.exists() {
+                            let _ = fs::remove_file(&self.final_output_path);
+                        }
+                        fs::rename(&self.video_output_path, &self.final_output_path).map_err(|e| {
+                            RecorderError::CaptureRuntime(format!(
+                                "Falha ao mover o video final sem audio para o destino: {}",
+                                e
+                            ))
+                        })?;
+                    }
+
+                    let _ = fs::remove_file(&self.log_path);
                     return Ok(());
                 }
                 Ok(None) => std::thread::sleep(Duration::from_millis(STOP_POLL_INTERVAL_MS)),
@@ -730,6 +661,7 @@ impl CaptureSession {
         )))
     }
 
+    /// Mata agressivamente o processo do FFmpeg e de áudio (Force exit).
     pub fn kill(&mut self) {
         if let Some(capture) = &self.mic_capture {
             capture.request_stop();

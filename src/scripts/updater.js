@@ -1,10 +1,13 @@
-const { invoke } = window.__TAURI__.core;
-const { listen, emit } = window.__TAURI__.event;
-const { getCurrentWindow } = window.__TAURI__.window;
+/**
+ * Rec Corder — Gerenciador de Atualizações
+ * Lida com o processo de download e instalação de atualizações.
+ */
 
-const appWindow = getCurrentWindow();
+import * as recorder from './recorder.js';
 
-// Elements
+const appWindow = recorder.getCurrentWindow();
+
+// Elementos
 const btnCancel = document.getElementById('btn-cancel');
 const btnInstall = document.getElementById('btn-install');
 const statusText = document.getElementById('status-text');
@@ -16,11 +19,15 @@ const downloadStatus = document.getElementById('download-status');
 const changelogContainer = document.getElementById('changelog-container');
 const changelogContent = document.getElementById('changelog-content');
 
-// Listen for data from the backend
+/** @type {Function|undefined} Função de callback para desvincular o listener dos dados. */
 let unlistenData;
 
+/**
+ * Inicializa a janela do atualizador e aguarda dados do backend.
+ * @returns {Promise<void>}
+ */
 async function init() {
-  // Configure marked for tables and GFM
+  // Configura o Marked para tabelas e GFM (GitHub Flavored Markdown)
   if (window.marked) {
     const options = {
       gfm: true,
@@ -33,7 +40,7 @@ async function init() {
     }
   }
 
-  unlistenData = await listen('updater-data', (event) => {
+  unlistenData = await recorder.listen('updater-data', (event) => {
     const [version, body] = event.payload;
     
     if (version) {
@@ -45,7 +52,7 @@ async function init() {
       
       let processedBody = body;
       
-      // Simple emoji replacement support
+      // Suporte simples para substituição de emojis
       const emojiMap = {
         ':white_check_mark:': '✅',
         ':sparkles:': '✨',
@@ -64,10 +71,10 @@ async function init() {
       });
 
       if (window.marked) {
-        // Parse markdown to HTML
+        // Converte markdown para HTML
         let html = window.marked.parse(processedBody);
         
-        // Post-process GitHub Admonitions (Alerts)
+        // Pós-processa Alertas (Admonitions) do GitHub
         const admonitionRegex = /<blockquote>\s*<p>\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/i;
         
         if (admonitionRegex.test(html)) {
@@ -86,14 +93,14 @@ async function init() {
               const type = match[1].toLowerCase();
               const title = match[1].toUpperCase();
               
-              // Remove the [!TYPE] tag from the first paragraph
+              // Remove a tag [!TYPE] do primeiro parágrafo
               firstP.innerHTML = firstP.innerHTML.replace(/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\](\s*<br>)?/i, '');
               
-              // Create the alert container
+              // Cria o container de alerta
               const alertDiv = document.createElement('div');
               alertDiv.className = `markdown-alert markdown-alert-${type}`;
               
-              // Define Icons
+              // Define os ícones
               let icon = '';
               switch(type) {
                 case 'note':
@@ -127,7 +134,7 @@ async function init() {
 
         changelogContent.innerHTML = html;
         
-        // Trigger Prism highlighting
+        // Ativa o highlight do Prism
         if (window.Prism) {
           window.Prism.highlightAllUnder(changelogContent);
         }
@@ -136,19 +143,19 @@ async function init() {
       }
     }
 
-    // Now that everything is rendered, show the window
+    // Agora que tudo está renderizado, mostramos a janela
     appWindow.show();
     appWindow.setFocus();
   });
 
   // Notifica o backend que o frontend está pronto para receber os dados
-  await emit('updater-ready');
+  await recorder.emit('updater-ready');
 }
 
 init();
 
 btnCancel.addEventListener('click', async () => {
-  await emit('updater-close');
+  await recorder.emit('updater-close');
 });
 
 btnInstall.addEventListener('click', async () => {
@@ -162,8 +169,8 @@ btnInstall.addEventListener('click', async () => {
     
     let downloadTotal = 0;
     let downloadedBytes = 0;
-
-    const unlistenProgress = await listen('update-progress', (event) => {
+ 
+    const unlistenProgress = await recorder.listen('update-progress', (event) => {
       const payload = event.payload;
       const chunk = payload.chunk;
       downloadTotal = payload.total || downloadTotal;
@@ -177,32 +184,36 @@ btnInstall.addEventListener('click', async () => {
       }
     });
 
-    const unlistenFinished = await listen('update-finished', () => {
+    const unlistenFinished = await recorder.listen('update-finished', () => {
       downloadStatus.textContent = 'Instalando...';
       statusText.textContent = 'A atualização foi baixada e está sendo aplicada. O aplicativo será reiniciado em instantes.';
       progressFill.style.width = '100%';
       downloadPercent.textContent = '100%';
     });
 
-    const unlistenError = await listen('update-error', (event) => {
+    const unlistenError = await recorder.listen('update-error', (event) => {
       showError(`Falha técnica: ${event.payload}`);
     });
 
-    await invoke('install_update');
+    await recorder.installUpdate();
 
   } catch (error) {
     showError(error);
   }
 });
 
+/**
+ * Exibe um erro de atualização e altera a interface para modo de falha.
+ * @param {string|Error} error - O erro que ocorreu.
+ */
 function showError(error) {
-  console.error('Update failed:', error);
+  console.error('Falha na atualização:', error);
   
   statusText.innerHTML = `
     <div class="error-text">
       Não foi possível concluir a atualização automática.<br>
       Por favor, baixe a versão mais recente manualmente em: 
-      <span class="download-link" onclick="window.__TAURI__.core.invoke('open_link', { url: 'https://www.reccorder.com.br' })">www.reccorder.com.br</span>
+      <span class="download-link" onclick="import('./recorder.js').then(r => r.invoke('open_link', { url: 'https://www.reccorder.com.br' }))">www.reccorder.com.br</span>
     </div>
   `;
   
@@ -212,7 +223,7 @@ function showError(error) {
   downloadSection.classList.add('hidden');
 }
 
-// Cleanup
+// Limpeza
 window.addEventListener('unload', () => {
   if (unlistenData) unlistenData();
 });

@@ -75,7 +75,6 @@ pub async fn show_updater(app: AppHandle<Wry>, version: String, body: Option<Str
         .decorations(true)
         .center()
         .always_on_top(true)
-        .visible(false) // Inicia oculta
         .build()
         .map_err(|e| e.to_string())?;
 
@@ -98,41 +97,28 @@ pub async fn show_updater(app: AppHandle<Wry>, version: String, body: Option<Str
 
 #[tauri::command]
 pub async fn get_release_notes(app: AppHandle<Wry>, version: String) -> Result<Option<String>, String> {
-    let _ = version; // Mark as used to avoid warnings
-    // 1. Tenta ler do diretório de recursos (se estiver empacotado)
-    if let Ok(mut resource_path) = app.path().resource_dir() {
-        let up_path = resource_path.join("_up_").join("UPDATE.md");
-        if let Ok(content) = std::fs::read_to_string(&up_path) {
+    let _ = version;
+    let _ = app;
+
+    #[cfg(debug_assertions)]
+    {
+        if let Ok(content) = std::fs::read_to_string("../UPDATE.md") {
+            println!("[DEBUG] Release Notes carregadas da raiz do projeto (../UPDATE.md)");
             return Ok(Some(content));
         }
-
-        let up_path_lower = resource_path.join("_up_").join("update.md");
-        if let Ok(content) = std::fs::read_to_string(&up_path_lower) {
+        if let Ok(content) = std::fs::read_to_string("../update.md") {
             return Ok(Some(content));
         }
-
-        resource_path.push("UPDATE.md");
-        if let Ok(content) = std::fs::read_to_string(&resource_path) {
-            return Ok(Some(content));
-        }
-    }
-    
-    // 2. Tenta ler do diretório raiz durante o desenvolvimento (um nível acima de src-tauri)
-    if let Ok(content) = std::fs::read_to_string("../UPDATE.md") {
-        return Ok(Some(content));
+        Ok(None)
     }
 
-    // 3. Fallback para lowercase
-    if let Ok(content) = std::fs::read_to_string("../update.md") {
-        return Ok(Some(content));
+    #[cfg(not(debug_assertions))]
+    {
+        // Em produção, o UPDATE.md é embutido diretamente no binário durante a compilação
+        // Isso resolve o problema de caminhos relativos ao empacotar para diferentes plataformas.
+        let content = include_str!("../../../UPDATE.md");
+        Ok(Some(content.to_string()))
     }
-
-    // 4. Fallback final para o diretório atual
-    if let Ok(content) = std::fs::read_to_string("UPDATE.md") {
-        return Ok(Some(content));
-    }
-
-    Ok(None)
 }
 
 #[tauri::command]
@@ -154,7 +140,6 @@ pub async fn show_release_notes(app: AppHandle<Wry>) -> Result<(), String> {
         .decorations(true)
         .center()
         .always_on_top(true)
-        .visible(false)
         .build()
         .map_err(|e| e.to_string())?;
 
@@ -164,7 +149,6 @@ pub async fn show_release_notes(app: AppHandle<Wry>) -> Result<(), String> {
         });
 
         // A janela agora busca os dados sozinha via comandos quando carrega
-        let _ = window.show();
         let _ = window.set_focus();
     }
     Ok(())

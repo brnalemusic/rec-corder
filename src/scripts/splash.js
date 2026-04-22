@@ -1,19 +1,31 @@
-const { invoke } = window.__TAURI__.core;
+import * as recorder from './recorder.js';
 
+/**
+ * Rec Corder — Tela de Abertura (Splash)
+ * Gerencia a inicialização inicial, verificação do FFmpeg e detecção de hardware.
+ */
+
+
+
+
+/**
+ * Realiza as verificações de inicialização.
+ * @returns {Promise<void>}
+ */
 async function bootstrap() {
   const statusText = document.getElementById('statusText');
   const splashVersion = document.getElementById('splashVersion');
 
   try {
-    const version = await window.__TAURI__.app.getVersion();
+    const version = await recorder.getAppVersion();
     if (splashVersion) splashVersion.textContent = `v${version}`;
   } catch (e) {
-    console.warn('Failed to get version for splash:', e);
+    console.warn('Falha ao obter a versão para a tela de abertura:', e);
   }
 
   try {
     // Verificar se FFmpeg está disponível
-    const ffmpegStatus = await invoke('check_ffmpeg');
+    const ffmpegStatus = await recorder.invoke('check_ffmpeg');
     
     if (!ffmpegStatus.found) {
       console.warn('FFmpeg não encontrado.');
@@ -31,7 +43,7 @@ async function bootstrap() {
     // Testar ambiente de encoding
     statusText.style.color = '#ffaa00';
     statusText.textContent = 'Detectando acelerador...';
-    const encoder = await invoke('test_environment');
+    const encoder = await recorder.invoke('test_environment');
     console.log('Ambiente testado. Encoder:', encoder);
 
     statusText.style.color = '#00ff88';
@@ -39,7 +51,7 @@ async function bootstrap() {
 
     await new Promise(r => setTimeout(r, 800));
   } catch (err) {
-    console.error('Falha na deteccao:', err);
+    console.error('Falha na detecção:', err);
     statusText.style.color = '#ffaa00';
     statusText.textContent = 'Fallback: software (libx264)';
 
@@ -48,9 +60,9 @@ async function bootstrap() {
 
   // Transição segura feita inteiramente pelo Rust (sem depender da API JS de janela)
   try {
-    await invoke('finish_splash');
+    await recorder.invoke('finish_splash');
   } catch (e) {
-    console.error('Erro na transicao de janela:', e);
+    console.error('Erro na transição de janela:', e);
   }
 }
 

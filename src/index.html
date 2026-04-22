@@ -160,6 +160,24 @@
       </div>
     </div>
 
+    <!-- Linux Dependencies Modal -->
+    <div class="modal-backdrop hidden" id="linuxDepsModalBackdrop" style="z-index: 9999;">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="linuxDepsModalTitle">
+        <div class="modal__header">
+          <h2 class="modal__title" id="linuxDepsModalTitle">Dependências Ausentes</h2>
+          <button class="modal__close" id="closeLinuxDepsModal" aria-label="Cancelar">×</button>
+        </div>
+        <div class="modal__body">
+          <p style="color: var(--text-primary); font-size: 14px; line-height: 1.5; margin: 0;">Faltam pacotes no sistema para poder gravar a tela (como <code style="background: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 4px;">ffmpeg</code> e ferramentas de áudio/vídeo).</p>
+          <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.5; margin: 8px 0 0 0;">O aplicativo irá fechar para baixar essas dependências em um terminal, e depois será reiniciado automaticamente.</p>
+        </div>
+        <div class="modal__footer" style="display: flex; gap: 12px; justify-content: flex-end;">
+          <button class="btn" id="cancelLinuxDepsBtn" style="padding: 0 16px; background: transparent; border: 1px solid var(--border-soft); color: var(--text-primary); border-radius: var(--radius-sm); cursor: pointer; transition: background 0.2s;">Cancelar</button>
+          <button class="btn btn--full-accent" id="confirmLinuxDepsBtn" style="background: #28a745; color: white;">Instalar e Reiniciar</button>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="scripts/utils.js"></script>
     <script type="module" src="scripts/recorder.js"></script>
     <script type="module" src="scripts/app.js"></script>

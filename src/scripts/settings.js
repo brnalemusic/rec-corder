@@ -1,11 +1,21 @@
 /**
- * Rec Corder — Settings Window
- * Manages the advanced configuration panel in a separate window.
+ * Rec Corder — Janela de Configurações
+ * Gerencia o painel de configurações avançadas em uma janela separada.
  */
 
 import * as Recorder from './recorder.js';
 
-// State
+/**
+ * @typedef {Object} SettingsState
+ * @property {Object|null} config - Objeto de configuração atual.
+ * @property {Array} monitors - Monitores detectados.
+ * @property {Array} mics - Microfones detectados.
+ * @property {Array} audioOutputs - Saídas de áudio detectadas.
+ * @property {Array} cameras - Câmeras detectadas.
+ * @property {boolean} isDirty - Indica se houve alterações não salvas.
+ */
+
+/** @type {SettingsState} */
 const state = {
   config: null,
   monitors: [],
@@ -15,13 +25,13 @@ const state = {
   isDirty: false,
 };
 
-// DOM Elements
+// Elementos DOM
 const elements = {
-  // Tabs
+  // Abas
   navBtns: document.querySelectorAll('.nav-btn'),
   tabContents: document.querySelectorAll('.tab-content'),
 
-  // Video
+  // Vídeo
   monitorSelect: document.getElementById('monitorSelect'),
   fpsBtns: document.querySelectorAll('.fps-btn'),
   scaleSlider: document.getElementById('scaleSlider'),
@@ -35,17 +45,17 @@ const elements = {
   webcamSizeValue: document.getElementById('webcamSizeValue'),
   webcamDetails: document.querySelectorAll('.webcam-detail'),
 
-  // Audio
+  // Áudio
   micSelect: document.getElementById('micSelect'),
   audioOutputSelect: document.getElementById('audioOutputSelect'),
   sysAudioToggle: document.getElementById('sysAudioToggle'),
   micVolumeSlider: document.getElementById('micVolumeSlider'),
   micVolumeValue: document.getElementById('micVolumeValue'),
 
-  // Output
+  // Saída
   outputPath: document.getElementById('outputPath'),
 
-  // Actions
+  // Ações
   saveBtn: document.getElementById('saveBtn'),
   closeBtn: document.getElementById('closeBtn'),
   resetBtn: document.getElementById('resetBtn'),
@@ -56,13 +66,14 @@ const elements = {
 };
 
 /**
- * Initialize the settings window
+ * Inicializa a janela de configurações.
+ * @returns {Promise<void>}
  */
 async function init() {
   try {
     setStatusLoading('Carregando...');
 
-    // Load config and data
+    // Carrega dados e configurações
     await Promise.all([
       loadConfig(),
       loadMonitors(),
@@ -72,51 +83,51 @@ async function init() {
       loadCameras(),
     ]);
 
-    // Setup event listeners
+    // Configura os ouvintes de evento
     setupEventListeners();
 
-    // Listen for updates from other windows
+    // Escuta as atualizações de outras janelas
     try {
-      const { listen } = window.__TAURI__.event;
-      await listen('config-updated', (event) => {
-        console.log('Settings: config updated from backend:', event.payload);
+      await Recorder.listen('config-updated', (event) => {
+        console.log('Configurações: configuração atualizada pelo backend:', event.payload);
         state.config = event.payload;
         updateUIFromConfig();
       });
     } catch (e) {
-      console.warn('Failed to setup config-updated listener in settings:', e);
+      console.warn('Falha ao configurar o listener config-updated nas configurações:', e);
     }
 
     setStatusSuccess('Pronto');
   } catch (error) {
-    console.error('Error initializing settings:', error);
+    console.error('Erro ao inicializar as configurações:', error);
     setStatusError('Erro');
   }
 }
 
 /**
- * Load current configuration from backend
+ * Carrega a configuração atual do backend.
+ * @returns {Promise<void>}
  */
 async function loadConfig() {
   try {
     state.config = await Recorder.getConfig();
     updateUIFromConfig();
   } catch (error) {
-    console.error('Error loading config:', error);
+    console.error('Erro ao carregar a configuração:', error);
     throw error;
   }
 }
 
 /**
- * Update UI based on loaded config
+ * Atualiza a interface com base na configuração carregada.
  */
 function updateUIFromConfig() {
   if (!state.config) return;
 
-  // Video settings
+  // Configurações de vídeo
   elements.monitorSelect.value = state.config.selected_monitor || 0;
 
-  // Set active FPS button
+  // Define o botão ativo de FPS
   const currentFps = state.config.fps || 60;
   elements.fpsBtns.forEach((btn) => {
     btn.classList.remove('fps-btn--active');
@@ -125,49 +136,49 @@ function updateUIFromConfig() {
     }
   });
 
-  // Scale slider
+  // Slider de escala
   const scale = state.config.scale || 100;
   elements.scaleSlider.value = scale;
   updateScaleDisplay(scale);
 
-  // Audio settings
+  // Configurações de áudio
   elements.micSelect.value = state.config.selected_mic || '';
   elements.audioOutputSelect.value = state.config.selected_audio_output || 'default';
 
-  // System audio toggle
+  // Toggle do áudio de sistema
   const sysAudioEnabled = state.config.system_audio_enabled !== false;
   elements.sysAudioToggle.classList.toggle('toggle--active', sysAudioEnabled);
   elements.sysAudioToggle.classList.toggle('brutalist-toggle--active', sysAudioEnabled);
   elements.sysAudioToggle.setAttribute('aria-checked', sysAudioEnabled);
 
-  // Mic volume
+  // Volume do microfone
   const micVolume = state.config.mic_volume || 100;
   elements.micVolumeSlider.value = micVolume;
   updateMicVolumeDisplay(micVolume);
 
-  // Webcam toggle
+  // Toggle da webcam
   const webcamEnabled = state.config.webcam_enabled === true;
   elements.webcamToggle.classList.toggle('toggle--active', webcamEnabled);
   elements.webcamToggle.classList.toggle('brutalist-toggle--active', webcamEnabled);
   elements.webcamToggle.setAttribute('aria-checked', webcamEnabled);
 
-  // Show/hide webcam detail cards
+  // Exibe/oculta cards de detalhes da webcam
   elements.webcamDetails.forEach(card => {
     card.classList.toggle('webcam-detail--hidden', !webcamEnabled);
   });
 
-  // Webcam camera
+  // Câmera da webcam
   if (state.config.webcam_device) {
     elements.cameraSelect.value = state.config.webcam_device;
   }
 
-  // Webcam position
+  // Posição da webcam
   const pos = state.config.webcam_position || 'bottom-right';
   elements.positionBtns.forEach(btn => {
     btn.classList.toggle('pos-btn--active', btn.dataset.pos === pos);
   });
 
-  // Webcam size
+  // Tamanho da webcam
   const webcamSize = state.config.webcam_size || 100;
   elements.webcamSizeSlider.value = webcamSize;
   updateWebcamSizeDisplay(webcamSize);
@@ -176,7 +187,8 @@ function updateUIFromConfig() {
 }
 
 /**
- * Load available monitors
+ * Carrega monitores disponíveis.
+ * @returns {Promise<void>}
  */
 async function loadMonitors() {
   try {
@@ -189,12 +201,13 @@ async function loadMonitors() {
       elements.monitorSelect.appendChild(option);
     });
   } catch (error) {
-    console.error('Error loading monitors:', error);
+    console.error('Erro ao carregar monitores:', error);
   }
 }
 
 /**
- * Load available microphones
+ * Carrega microfones disponíveis.
+ * @returns {Promise<void>}
  */
 async function loadMics() {
   try {
@@ -207,12 +220,13 @@ async function loadMics() {
       elements.micSelect.appendChild(option);
     });
   } catch (error) {
-    console.error('Error loading mics:', error);
+    console.error('Erro ao carregar microfones:', error);
   }
 }
 
 /**
- * Load available audio outputs
+ * Carrega saídas de áudio disponíveis.
+ * @returns {Promise<void>}
  */
 async function loadAudioOutputs() {
   try {
@@ -225,12 +239,13 @@ async function loadAudioOutputs() {
       elements.audioOutputSelect.appendChild(option);
     });
   } catch (error) {
-    console.error('Error loading audio outputs:', error);
+    console.error('Erro ao carregar saídas de áudio:', error);
   }
 }
 
 /**
- * Load available cameras via FFmpeg DirectShow
+ * Carrega câmeras disponíveis via FFmpeg DirectShow.
+ * @returns {Promise<void>}
  */
 async function loadCameras() {
   try {
@@ -248,17 +263,18 @@ async function loadCameras() {
       option.textContent = cam.name;
       elements.cameraSelect.appendChild(option);
     });
-    // Auto-select saved camera from config
+    // Auto-seleciona câmera guardada na configuração
     if (state.config?.webcam_device) {
       elements.cameraSelect.value = state.config.webcam_device;
     }
   } catch (error) {
-    console.error('Error loading cameras:', error);
+    console.error('Erro ao carregar câmeras:', error);
   }
 }
 
 /**
- * Load current output directory
+ * Carrega o diretório de saída atual.
+ * @returns {Promise<void>}
  */
 async function loadOutputDir() {
   try {
@@ -267,24 +283,24 @@ async function loadOutputDir() {
     if (textEl) textEl.textContent = dir;
     elements.outputPath.title = dir;
   } catch (error) {
-    console.error('Error loading output dir:', error);
+    console.error('Erro ao carregar o diretório de saída:', error);
   }
 }
 
 /**
- * Setup event listeners
+ * Configura os ouvintes de evento da janela.
  */
 function setupEventListeners() {
-  // Tab Switching
+  // Alternar Abas
   elements.navBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       const tabId = btn.dataset.tab;
       
-      // Update buttons
+      // Atualiza botões
       elements.navBtns.forEach(b => b.classList.remove('nav-btn--active'));
       btn.classList.add('nav-btn--active');
       
-      // Update content
+      // Atualiza conteúdo
       elements.tabContents.forEach(content => {
         content.classList.add('hidden');
         if (content.id === `tab-${tabId}`) {
@@ -294,12 +310,12 @@ function setupEventListeners() {
     });
   });
 
-  // Monitor selection
+  // Seleção de Monitor
   elements.monitorSelect.addEventListener('change', () => {
     state.isDirty = true;
   });
 
-  // FPS buttons
+  // Botões de FPS
   elements.fpsBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
       elements.fpsBtns.forEach((b) => b.classList.remove('fps-btn--active'));
@@ -308,23 +324,23 @@ function setupEventListeners() {
     });
   });
 
-  // Scale slider
+  // Slider de escala
   elements.scaleSlider.addEventListener('input', (e) => {
     updateScaleDisplay(e.target.value);
     state.isDirty = true;
   });
 
-  // Mic selection
+  // Seleção de microfone
   elements.micSelect.addEventListener('change', () => {
     state.isDirty = true;
   });
 
-  // Audio output selection
+  // Seleção de saída de áudio
   elements.audioOutputSelect.addEventListener('change', () => {
     state.isDirty = true;
   });
 
-  // System audio toggle
+  // Toggle do áudio de sistema
   elements.sysAudioToggle.addEventListener('click', () => {
     const isActive = !elements.sysAudioToggle.classList.contains('toggle--active');
     elements.sysAudioToggle.classList.toggle('toggle--active', isActive);
@@ -333,13 +349,13 @@ function setupEventListeners() {
     state.isDirty = true;
   });
 
-  // Mic volume slider
+  // Slider de volume do microfone
   elements.micVolumeSlider.addEventListener('input', (e) => {
     updateMicVolumeDisplay(e.target.value);
     state.isDirty = true;
   });
 
-  // Webcam toggle
+  // Toggle da webcam
   elements.webcamToggle.addEventListener('click', () => {
     if (state.cameras.length === 0) return;
     const isActive = !elements.webcamToggle.classList.contains('toggle--active');
@@ -352,12 +368,12 @@ function setupEventListeners() {
     state.isDirty = true;
   });
 
-  // Camera selection
+  // Seleção de câmera
   elements.cameraSelect.addEventListener('change', () => {
     state.isDirty = true;
   });
 
-  // Position buttons
+  // Botões de posição
   elements.positionBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       elements.positionBtns.forEach(b => b.classList.remove('pos-btn--active'));
@@ -366,25 +382,26 @@ function setupEventListeners() {
     });
   });
 
-  // Webcam size slider
+  // Slider de tamanho da webcam
   elements.webcamSizeSlider.addEventListener('input', (e) => {
     updateWebcamSizeDisplay(e.target.value);
     state.isDirty = true;
   });
 
-  // Output path button
+  // Botão de diretório de saída
   elements.outputPath.addEventListener('click', () => {
     selectOutputDirectory();
   });
 
-  // Action buttons
+  // Botões de Ação
   elements.saveBtn.addEventListener('click', saveConfig);
   elements.closeBtn.addEventListener('click', closeWindow);
   elements.resetBtn.addEventListener('click', resetToDefaults);
 }
 
 /**
- * Update scale display
+ * Atualiza o visualizador da escala.
+ * @param {number|string} value - O valor atual da escala.
  */
 function updateScaleDisplay(value) {
   elements.scaleValue.textContent = `${value}%`;
@@ -393,7 +410,8 @@ function updateScaleDisplay(value) {
 }
 
 /**
- * Update mic volume display
+ * Atualiza o visualizador do volume do microfone.
+ * @param {number|string} value - O valor atual do volume do microfone.
  */
 function updateMicVolumeDisplay(value) {
   elements.micVolumeValue.textContent = `${value}%`;
@@ -402,7 +420,8 @@ function updateMicVolumeDisplay(value) {
 }
 
 /**
- * Update webcam size display
+ * Atualiza o visualizador do tamanho da webcam.
+ * @param {number|string} value - O valor atual do tamanho da webcam.
  */
 function updateWebcamSizeDisplay(value) {
   elements.webcamSizeValue.textContent = `${value}%`;
@@ -411,7 +430,8 @@ function updateWebcamSizeDisplay(value) {
 }
 
 /**
- * Save configuration to backend
+ * Salva a configuração no backend.
+ * @returns {Promise<void>}
  */
 async function saveConfig() {
   try {
@@ -443,13 +463,14 @@ async function saveConfig() {
     state.isDirty = false;
     await closeWindow({ force: true });
   } catch (error) {
-    console.error('Error saving config:', error);
+    console.error('Erro ao salvar a configuração:', error);
     setStatusError('Erro ao salvar');
   }
 }
 
 /**
- * Reset to default settings
+ * Restaura para as configurações padrão.
+ * @returns {Promise<void>}
  */
 async function resetToDefaults() {
   if (confirm('Restaurar padrões?')) {
@@ -479,19 +500,19 @@ async function resetToDefaults() {
       updateUIFromConfig();
       setStatusSuccess('Resetado!');
     } catch (error) {
-      console.error('Error resetting config:', error);
+      console.error('Erro ao resetar configuração:', error);
       setStatusError('Erro no reset');
     }
   }
 }
 
 /**
- * Select output directory
+ * Abre a janela de seleção do diretório de saída.
+ * @returns {Promise<void>}
  */
 async function selectOutputDirectory() {
   try {
-    const { open } = window.__TAURI__.dialog;
-    const selected = await open({
+    const selected = await Recorder.openDialog({
       directory: true,
       title: 'Selecionar pasta de destino',
     });
@@ -505,13 +526,16 @@ async function selectOutputDirectory() {
       setStatusSuccess('Pasta alterada');
     }
   } catch (error) {
-    console.error('Error selecting output directory:', error);
+    console.error('Erro ao selecionar o diretório de saída:', error);
     setStatusError('Erro na pasta');
   }
 }
 
 /**
- * Close settings window
+ * Fecha a janela de configurações.
+ * @param {Object} [options] - Opções de fechamento.
+ * @param {boolean} [options.force=false] - Ignora o prompt de alerta ao ter mudanças não salvas.
+ * @returns {Promise<void>}
  */
 async function closeWindow({ force = false } = {}) {
   if (!force && state.isDirty && !confirm('Sair sem salvar?')) {
@@ -522,13 +546,11 @@ async function closeWindow({ force = false } = {}) {
     await Recorder.hideSettings();
     return;
   } catch (error) {
-    console.warn('Failed to hide settings window via backend command:', error);
+    console.warn('Falha ao ocultar a janela de configurações usando comando backend:', error);
   }
 
   try {
-    const tauriWindow =
-      window.__TAURI__?.webviewWindow?.getCurrentWebviewWindow?.() ||
-      window.__TAURI__?.window?.getCurrentWindow?.();
+    const tauriWindow = Recorder.getCurrentWindow();
 
     if (tauriWindow?.hide) {
       await tauriWindow.hide();
@@ -536,14 +558,15 @@ async function closeWindow({ force = false } = {}) {
     }
   }
   catch (error) {
-    console.warn('Failed to hide settings window via Tauri API:', error);
+    console.warn('Falha ao ocultar a janela de configurações via API do Tauri:', error);
   }
 
   window.close();
 }
 
 /**
- * Set status as loading
+ * Define o status visual como "Carregando".
+ * @param {string} message - A mensagem a ser exibida.
  */
 function setStatusLoading(message) {
   elements.statusIndicator.classList.add('status__dot--loading');
@@ -551,7 +574,8 @@ function setStatusLoading(message) {
 }
 
 /**
- * Set status as success
+ * Define o status visual como "Sucesso".
+ * @param {string} message - A mensagem a ser exibida.
  */
 function setStatusSuccess(message) {
   elements.statusIndicator.classList.remove('status__dot--loading', 'status__dot--error');
@@ -559,7 +583,8 @@ function setStatusSuccess(message) {
 }
 
 /**
- * Set status as error
+ * Define o status visual como "Erro".
+ * @param {string} message - A mensagem a ser exibida.
  */
 function setStatusError(message) {
   elements.statusIndicator.classList.add('status__dot--error');
@@ -567,5 +592,5 @@ function setStatusError(message) {
   elements.statusMessage.textContent = message;
 }
 
-// Initialize on load
+// Inicializa no carregamento do DOM
 document.addEventListener('DOMContentLoaded', init);

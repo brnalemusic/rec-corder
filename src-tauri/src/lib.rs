@@ -1,15 +1,19 @@
 mod commands;
 mod config;
 mod errors;
+#[cfg(feature = "python")]
+mod python_api;
 mod services;
 mod state;
 
-use commands::ffmpeg;
 use commands::recorder::{self, SessionHandle};
-use commands::updater::{self, PendingUpdate};
+use commands::ffmpeg;
 use parking_lot::Mutex;
 use state::AppState;
+use commands::updater::{self, PendingUpdate};
 
+/// Função de entrada principal que inicializa o contexto e os plugins do Tauri.
+/// // [IMPORTANTE] Configura o AppState e o gerador de eventos globais.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -17,15 +21,33 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .setup(|_app| Ok(()))
+        .setup(|_app| {
+            // Validação de dependências no Linux (não-bloqueante no setup)
+            #[cfg(target_os = "linux")]
+            {
+                use crate::services::capture::linux::validate_linux_system_deps;
+                if let Err(missing) = validate_linux_system_deps() {
+                    eprintln!("[AVISO] Dependências do sistema ausentes: {:?}. A gravação será bloqueada.", missing);
+                } else {
+                    println!("[INFO] Todas as dependências do sistema Linux foram encontradas.");
+                }
+            }
+
+            Ok(())
+        })
         .manage(AppState::new())
         .manage::<SessionHandle>(Mutex::new(None))
         .manage(PendingUpdate(Mutex::new(None)))
         .on_window_event(|window, event| {
+            // Comportamento customizado ao fechar as janelas
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let _ = api;
                 if window.label() == "settings" {
-                    let _ = window.hide();
-                    api.prevent_close();
+                    #[cfg(target_os = "windows")]
+                    {
+                        let _ = window.hide();
+                        api.prevent_close();
+                    }
                 }
             }
         })
@@ -55,7 +77,9 @@ pub fn run() {
             updater::show_release_notes,
             updater::install_update,
             updater::open_link,
+            recorder::check_linux_deps,
+            recorder::install_linux_deps,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .expect("erro enquanto rodava a aplicacao tauri");
 }
