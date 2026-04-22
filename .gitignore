@@ -96,3 +96,5 @@ temp_audio_*
 # --- ENVs ---
 .env
 *.pem
+.gemini/
+gha-creds-*.json
