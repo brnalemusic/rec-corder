@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use parking_lot::Mutex as ParkingMutex;
@@ -199,8 +199,8 @@ pub fn finish_splash(app: AppHandle) -> Result<(), String> {
         main_window.show().map_err(|e| e.to_string())?;
         main_window.set_focus().map_err(|e| e.to_string())?;
 
-        // Workaround para Linux Wayland/GTK onde as decorações da janela (botão X) 
-        // ficam sem hover/clique após o .show() se a janela foi criada oculta.
+        // Workaround for Linux Wayland/GTK where window decorations (X button) 
+        // can lose hover/click after .show() if window was created hidden.
         #[cfg(target_os = "linux")]
         {
             let _ = main_window.set_resizable(false);
@@ -226,7 +226,7 @@ pub fn finish_splash(app: AppHandle) -> Result<(), String> {
         .build()
         .map_err(|e| e.to_string())?;
 
-        // Aplicamos o mesmo hack caso a janela seja criada dinamicamente aqui
+        // Apply the same hack if the window is created dynamically here
         #[cfg(target_os = "linux")]
         {
             let _ = main_window.set_resizable(false);
@@ -277,11 +277,17 @@ pub fn start_recording(
     }
 
     // Sincronização e verificação de corridas (Race Condition guard)
-    let is_currently_recording = state.recording();
+    // Usamos compare_exchange para \"reservar\" o estado de gravação atomicamente, fechando a janela TOCTOU.
+    if state.is_recording.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst).is_err() {
+        println!("Erro: ja existe uma gravacao em andamento (flag atômica)");
+        return Err("Ja existe uma gravacao em andamento".into());
+    }
+
     {
         let handle_guard = session_handle.lock();
-        if is_currently_recording || handle_guard.is_some() {
-            println!("Erro: ja existe uma gravacao em andamento no contexto do app ou API");
+        if handle_guard.is_some() {
+            println!("Erro: inconsistência detectada, session_handle ocupado");
+            state.set_recording(false); // Rollback da reserva
             return Err("Ja existe uma gravacao em andamento".into());
         }
     }
@@ -322,7 +328,10 @@ pub fn start_recording(
     let file_path = output_dir_base.join(format!("RecCorder_{timestamp}.mp4"));
 
     let marker =
-        watchdog::write_crash_marker(&output_dir_base, &file_path).map_err(|e| e.to_string())?;
+        watchdog::write_crash_marker(&output_dir_base, &file_path).map_err(|e| {
+            state.set_recording(false);
+            e.to_string()
+        })?;
     let stop_flag = Arc::new(AtomicBool::new(false));
 
     let encoder = config_encoder;
@@ -330,6 +339,7 @@ pub fn start_recording(
     let session = match CaptureSession::start(file_path.clone(), monitor, mic_name.or(config_selected_mic), system_audio_device.or(config_selected_audio), configured_fps, scale, &encoder, webcam_cfg) {
         Ok(session) => session,
         Err(err) => {
+            state.set_recording(false);
             watchdog::clear_crash_marker(&output_dir_base);
             let err_msg = err.to_string();
             println!("Erro critico no CaptureSession: {}", err_msg);
@@ -338,7 +348,6 @@ pub fn start_recording(
     };
 
     // Assumindo propriedade na estrutura sem Lock global excessivo
-    state.set_recording(true);
     *state.recording_start.lock() = Some(std::time::Instant::now());
     *state.current_file.lock() = Some(file_path.clone());
     *state.crash_marker.lock() = Some(marker);
@@ -521,23 +530,14 @@ exit 0
         let mut spawned = false;
         
         for term in terminals {
-            let mut cmd = Command::new(term);
             if term == "gnome-terminal" {
-                cmd.arg("--").arg(script_path);
+                let cmd = Command::new(term);
+                let _ = cmd.arg("--").arg(script_path).spawn();
             } else {
-                cmd.arg("-e").arg(script_path);
-            }
-            
-            if cmd.spawn().is_ok() {
-                spawned = true;
-                break;
+                let cmd = Command::new(term);
+                let _ = cmd.arg("-e").arg(script_path).spawn();
             }
         }
-
-        if !spawned {
-            return Err("Nenhum emulador de terminal compatível encontrado. Instale as dependências manualmente.".into());
-        }
-
         app_handle.exit(0);
         Ok(())
     }
