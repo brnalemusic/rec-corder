@@ -1,7 +1,7 @@
 name: '🔎 Gemini Commit Review'
 
 on:
-  pull_request:
+  pull_request_target:
     types: [synchronize]
 
 concurrency:
