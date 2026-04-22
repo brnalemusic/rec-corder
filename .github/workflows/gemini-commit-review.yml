@@ -44,7 +44,7 @@ jobs:
   review-commit:
     needs: get-commits
     runs-on: 'ubuntu-latest'
-    timeout-minutes: 10
+    timeout-minutes: 20
     strategy:
       matrix:
         commit: ${{ fromJson(needs.get-commits.outputs.matrix) }}
