@@ -376,7 +376,6 @@ pub async fn stop_recording(
     // Sinaliza parada imediata das threads nativas de loopback C++ ou Alsa/PulseAudio
     active.stop_flag.store(true, std::sync::atomic::Ordering::Relaxed);
 
-    // Executa a finalização pesada do muxing (FFmpeg IO) em uma thead em blocking
     let stop_result = tokio::task::spawn_blocking(move || {
         std::thread::sleep(std::time::Duration::from_millis(200));
         active.session.stop()
@@ -387,19 +386,24 @@ pub async fn stop_recording(
         .lock()
         .as_ref()
         .map(|p| p.to_string_lossy().into_owned())
-        .unwrap_or_default();
+    // Executa a finalização pesada do muxing (FFmpeg IO) em uma thead em blocking
+    let stop_result = tokio::task::spawn_blocking(move || {
 
     let output_dir = state.output_dir.lock().clone();
-    watchdog::clear_crash_marker(&output_dir);
 
+    // Reset state regardless of outcome to allow new recordings
     state.set_recording(false);
     *state.recording_start.lock() = None;
     *state.current_file.lock() = None;
     *state.crash_marker.lock() = None;
 
-    stop_result.map_err(|e| e.to_string())?;
-
-    Ok(file_path)
+    match stop_result {
+        Ok(_) => {
+            watchdog::clear_crash_marker(&output_dir);
+            Ok(file_path)
+        }
+        Err(e) => Err(e.to_string()),
+    }
 }
 
 /// Realiza interrupção brusca (Force Exit) nos processos dependentes da gravação matando as instâncias via sinal KILL.
