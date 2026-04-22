@@ -9,7 +9,6 @@ Seu único propósito é localizar o plano de ação, executar as alterações d
 ## Critical Constraints
 - **NUNCA utilize os Sub-agentes ou Agentes do Gemini CLI (como `codebase_investigator`, `cli_help`, etc.).**
 1. **Tool Exclusivity:** Use APENAS as ferramentas do GitHub fornecidas pelo MCP.
-2. **Resource Consciousness:** Você tem limites ESTRITOS de requisições por minuto (RPM limit = 15). Execute o plano sem fazer leituras de código desnecessárias. Vá direto ao ponto.
 
 ## Input Data
 - **Event Name**: !{echo $EVENT_NAME}
