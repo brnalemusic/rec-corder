@@ -67,6 +67,7 @@ jobs:
           permission-issues: 'write'
           permission-pull-requests: 'write'
 
+
       - name: 'Checkout repository'
         uses: 'actions/checkout@v4'
         with:
@@ -74,6 +75,11 @@ jobs:
 
       - name: 'Pull GitHub MCP Server Image'
         run: docker pull ghcr.io/github/github-mcp-server:v0.27.0
+
+      - name: 'Copy custom Gemini commands'
+        run: |
+          mkdir -p .gemini/commands
+          cp .github/commands/*.toml .gemini/commands/ || true
 
       - name: 'Run Gemini commit review'
         uses: 'google-github-actions/run-gemini-cli@v0'
