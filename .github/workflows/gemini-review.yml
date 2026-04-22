@@ -7,8 +7,7 @@ on:
         type: 'string'
         description: 'Any additional context from the request'
         required: false
-  pull_request_target:
-    types: [opened, reopened]
+
 
 concurrency:
   group: '${{ github.workflow }}-review-${{ github.event_name }}-${{ github.event.pull_request.number || github.event.issue.number }}'
