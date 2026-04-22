@@ -289,3 +289,12 @@ export async function checkLinuxDeps() {
 export async function installLinuxDeps() {
   return invoke('install_linux_deps');
 }
+
+/**
+ * Abre um link externo no navegador padrão do sistema.
+ * @param {string} url - A URL a ser aberta.
+ * @returns {Promise<void>}
+ */
+export async function openLink(url) {
+  return invoke('open_link', { url });
+}
