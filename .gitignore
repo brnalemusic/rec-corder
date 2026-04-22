@@ -81,6 +81,7 @@ OPENCLAUDE*.md
 model.py
 .openclaude-profile.json
 .openclaude
+ISSUE.md
 
 # --- Python & CLI ---
 __pycache__/

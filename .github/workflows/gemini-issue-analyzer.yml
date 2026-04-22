@@ -35,6 +35,14 @@ jobs:
       - name: 'Checkout repository'
         uses: 'actions/checkout@v4'
 
+      - name: 'Pull GitHub MCP Server Image'
+        run: docker pull ghcr.io/github/github-mcp-server:v0.27.0
+
+      - name: 'Copy custom Gemini commands'
+        run: |
+          mkdir -p .gemini/commands
+          cp .github/commands/*.toml .gemini/commands/ || true
+
       - name: 'Run Gemini Issue Analyzer'
         uses: 'google-github-actions/run-gemini-cli@v0'
         id: 'gemini_issue_analyzer'
