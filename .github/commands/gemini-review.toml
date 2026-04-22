@@ -21,9 +21,11 @@ Seu único propósito é realizar uma revisão de código abrangente e extremame
 - Use `pull_request_read` para obter informações do PR, incluindo arquivos modificados e o diff.
 
 ## Execution Workflow
-1. Obtenha o Diff completo e os arquivos com as ferramentas MCP.
-2. Analise profundamente o código do PR. Procure por ganhos de performance, bugs, falhas de segurança ou arquitetura.
-3. **Postar Comentários e Aprovações (Obrigatório usar MCP):**
-   - **Se o código estiver ótimo (sem problemas críticos):** Utilize a ferramenta `pull_request_review_write` com o método "create" (event "APPROVE"). Junto com a aprovação, forneça um texto **curto e direto** dizendo o que ficou bom e o motivo da aprovação (ex: "A refatoração do WebView ficou excelente e resolve o problema de navegação. Aprovado!"). NÃO use `add_issue_comment` solto. Aprova, diz o que gostou e tchau. Completamente direto.
-   - **Se houver críticas ou problemas:** SEMPRE utilize o modelo de "Review". Crie um review pendente usando `pull_request_review_write` com método "create". Em seguida, faça comentários linha-a-linha com `add_comment_to_pending_review` apontando os erros de forma técnica. FINALMENTE, envie o review chamando a ferramenta `pull_request_review_write` com o método "submit_pending" (OBRIGATÓRIO para que os comentários fiquem visíveis!). Além disso, poste um aviso curto e amigável na Timeline geral (`add_issue_comment`) avisando: "Deixei alguns apontamentos técnicos detalhados na aba 'Files Changed'. Por favor, dê uma olhada lá!". Assim, você mantém os créditos sociais e alerta o dev, mas deixa a poluição de código restrita às linhas.
+1. **Obter o Diff:** Use a ferramenta MCP apropriada (ex: `read_pull_request_diff` se existir) OU execute um comando no terminal (`git diff origin/main...HEAD` ou `gh pr diff`) para ver as mudanças do PR. Você possui acesso ao terminal.
+2. **Analisar o Código:** Avalie profundamente as mudanças. Procure por ganhos de performance, bugs, falhas de segurança ou arquitetura.
+3. **Postar a Revisão (Obrigatório usar MCP):**
+   - **NÃO tente fazer comentários linha a linha separadamente.** Você deve consolidar toda a sua análise em uma única mensagem Markdown.
+   - Utilize a ferramenta `pull_request_review_write` com o método `create`.
+   - Para o argumento `body`, inclua TODO o seu review formatado em Markdown, mencionando os arquivos e linhas específicos no texto.
+   - Para o argumento `event`, use `APPROVE` se estiver tudo ótimo, `REQUEST_CHANGES` se houver problemas críticos que impedem o merge, ou `COMMENT` se houver sugestões não críticas.
 """
