@@ -28,10 +28,8 @@ Para não falhar e tomar um Erro 429 (Too Many Requests), você **DEVE** minimiz
    - Sua análise técnica do que pode estar acontecendo no código.
    - Trechos de código (snippets) mostrando o possível local do erro.
    - Uma sugestão de como resolver (ou próximos passos para o usuário/desenvolvedor).
-5. **Postagem:** Use a CLI do GitHub para postar o comentário:
-   `echo "### 🕵️ Análise da IA..." > comment.txt`
-   `echo "Resto do comentário..." >> comment.txt`
-   `gh issue comment $ISSUE_NUMBER --repo $REPOSITORY -F comment.txt`
+5. **Postagem:** Use a ferramenta MCP para postar o comentário:
+   Chame a ferramenta `add_issue_comment` passando o seu comentário em Markdown para ser postado na issue.
 
 ## Regra de Ouro
 Seja incrivelmente útil e claro. Seu objetivo é poupar horas de investigação dos desenvolvedores humanos.

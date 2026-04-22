@@ -72,6 +72,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: 'Pull GitHub MCP Server Image'
+        run: docker pull ghcr.io/github/github-mcp-server:v0.27.0
+
       - name: 'Run Gemini commit review'
         uses: 'google-github-actions/run-gemini-cli@v0'
         id: 'gemini_commit_review'

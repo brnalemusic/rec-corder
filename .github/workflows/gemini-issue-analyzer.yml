@@ -68,9 +68,28 @@ jobs:
                 "target": "local",
                 "outfile": ".gemini/telemetry.log"
               },
+              "mcpServers": {
+                "github": {
+                  "command": "docker",
+                  "args": [
+                    "run",
+                    "-i",
+                    "--rm",
+                    "-e",
+                    "GITHUB_PERSONAL_ACCESS_TOKEN",
+                    "ghcr.io/github/github-mcp-server:v0.27.0"
+                  ],
+                  "includeTools": [
+                    "add_issue_comment",
+                    "issue_read"
+                  ],
+                  "env": {
+                    "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+                  }
+                }
+              },
               "tools": {
                 "core": [
-                  "run_shell_command(gh)",
                   "run_shell_command(grep)",
                   "run_shell_command(cat)",
                   "run_shell_command(find)",
