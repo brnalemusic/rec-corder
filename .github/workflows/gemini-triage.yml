@@ -34,7 +34,7 @@ jobs:
         uses: 'actions/checkout@v4'
 
       - name: 'Pull GitHub MCP Server Image'
-        run: docker pull ghcr.io/github/github-mcp-server:v0.27.0
+        run: docker pull -q ghcr.io/github/github-mcp-server:v0.27.0
 
       - name: 'Copy custom Gemini commands'
         run: |

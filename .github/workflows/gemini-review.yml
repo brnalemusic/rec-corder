@@ -40,10 +40,10 @@ jobs:
           permission-pull-requests: 'write'
 
       - name: 'Checkout repository'
-        uses: 'actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8' # ratchet:actions/checkout@v6
+        uses: 'actions/checkout@v4' # ratchet:exclude
 
       - name: 'Pull GitHub MCP Server Image'
-        run: docker pull ghcr.io/github/github-mcp-server:v0.27.0
+        run: docker pull -q ghcr.io/github/github-mcp-server:v0.27.0
 
       - name: 'Copy custom Gemini commands'
         run: |
@@ -97,7 +97,6 @@ jobs:
                   "includeTools": [
                     "add_issue_comment",
                     "add_comment_to_pending_review",
-                    "submit_pending_pull_request_review",
                     "pull_request_read",
                     "pull_request_review_write",
                     "get_commit"

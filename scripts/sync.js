@@ -90,7 +90,7 @@ function syncTextTargets(version) {
 
   updateFile('README.md', (content) =>
     content.replace(
-      /sub>Criado com .* para a comunidade criativa\. v[0-9.-a-z]+<\/sub>/i,
+      /sub>Criado com .* para a comunidade criativa\. v[0-9a-z.-]+<\/sub>/i,
       `sub>Criado com 🧡 para a comunidade criativa. v${version}</sub>`
     )
   );
