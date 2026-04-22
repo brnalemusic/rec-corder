@@ -17,6 +17,7 @@ Seu único propósito é realizar uma revisão de código abrangente e extremame
 ## Input Data
 - **GitHub Repository**: !{echo $REPOSITORY}
 - **Pull Request Number**: !{echo $PULL_REQUEST_NUMBER}
+- **Additional Context/Request**: !{echo $ADDITIONAL_CONTEXT}
 - Use `pull_request_read` para obter informações do PR, incluindo arquivos modificados e o diff.
 
 ## Execution Workflow

@@ -28,6 +28,11 @@ You are an issue triage assistant. Analyze the current GitHub issue and identify
 !{echo $ISSUE_BODY}
 ```
 
+**Additional Context/Request**:
+```
+!{echo $ADDITIONAL_CONTEXT}
+```
+
 **Output File Path**:
 ```
 !{echo $GITHUB_ENV}
