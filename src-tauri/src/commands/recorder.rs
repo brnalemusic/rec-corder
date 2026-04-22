@@ -278,8 +278,6 @@ pub async fn stop_recording(
     // Sinaliza parada imediata das threads de audio
     active.stop_flag.store(true, std::sync::atomic::Ordering::Relaxed);
 
-    // Executa a finalização pesada (FFmpeg, Muxing, IO) em uma thread de bloqueio
-    // Isso evita que o executor assíncrono do Tauri trave a comunicação com a UI
     let stop_result = tokio::task::spawn_blocking(move || {
         // Pequena espera para garantir que os buffers de áudio fechem
         std::thread::sleep(std::time::Duration::from_millis(200));
@@ -294,16 +292,20 @@ pub async fn stop_recording(
         .unwrap_or_default();
 
     let output_dir = state.output_dir.lock().clone();
-    watchdog::clear_crash_marker(&output_dir);
 
+    // Reset state regardless of outcome to allow new recordings
     state.set_recording(false);
     *state.recording_start.lock() = None;
     *state.current_file.lock() = None;
     *state.crash_marker.lock() = None;
 
-    stop_result.map_err(|e| e.to_string())?;
-
-    Ok(file_path)
+    match stop_result {
+        Ok(_) => {
+            watchdog::clear_crash_marker(&output_dir);
+            Ok(file_path)
+        }
+        Err(e) => Err(e.to_string()),
+    }
 }
 
 #[tauri::command]
