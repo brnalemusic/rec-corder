@@ -133,7 +133,7 @@ jobs:
                     "get_commit"
                   ],
                   "env": {
-                    "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+                    "GITHUB_PERSONAL_ACCESS_TOKEN": "${{ env.GITHUB_TOKEN }}"
                   }
                 }
               },
