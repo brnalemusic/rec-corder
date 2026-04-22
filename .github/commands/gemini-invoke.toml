@@ -20,29 +20,30 @@ Seu único propósito é elaborar um plano e POSTAR o plano na Issue original ut
 - **Additional Context/Request**: !{echo $ADDITIONAL_CONTEXT}
 
 ## Execution Workflow
-1. **Entendimento:** O usuário requisitou algo via "Additional Context". Você já possui o "Title" e "Description".
-2. **Investigação (Curta):** Se você precisar saber como o código atual está estruturado para criar o plano, use `get_file_contents` para ler arquivos essenciais ou `search_code`.
-3. **Plano de Ação:** Crie um checklist em Markdown do que precisará ser alterado.
-4. **Postar o Plano (OBRIGATÓRIO):** 
-   - Você DEVE enviar o plano para a issue utilizando a ferramenta `add_issue_comment`.
-   - Se você apenas escrever o plano na sua resposta de texto, a automação irá falhar silenciosamente e o usuário não verá nada.
+1. **Entendimento:** O usuário requisitou algo via "Additional Context" ou "Description". Entenda se é um pedido para **alterar o código** (bug, feature) ou apenas uma **dúvida/pergunta**.
+2. **Investigação (Opcional):** Se precisar, use `get_file_contents` para ler arquivos essenciais ou `search_code`. Tente não gastar muitas requisições.
+3. **Decisão de Ação:**
+   - **Caminho A (Dúvida/Pergunta):** Se for apenas uma pergunta sobre o código, escreva uma resposta direta, amigável e técnica.
+   - **Caminho B (Alteração de Código):** Se for um pedido de alteração, crie um Plano de Ação em formato Markdown com um checklist dos arquivos e passos que serão executados.
+4. **Postar a Resposta (OBRIGATÓRIO):** 
+   - Você DEVE enviar sua resposta ou plano para a issue utilizando a ferramenta `add_issue_comment`.
+   - Se você apenas escrever a resposta no seu output de texto e não chamar a ferramenta, a automação falhará silenciosamente e o usuário não verá nada.
    - Parâmetros para a ferramenta `add_issue_comment`:
      - `owner`: (Extraia a primeira parte do $REPOSITORY antes da barra)
      - `repo`: (Extraia a segunda parte do $REPOSITORY depois da barra)
      - `issue_number`: Transforme $ISSUE_NUMBER em número inteiro.
-     - `body`: Seu Plano de Ação em formato Markdown.
+     - `body`: Sua Resposta Amigável (Caminho A) OU o seu Plano de Ação (Caminho B).
 
-### Formato do Body (Plano de Ação)
-O seu `body` no comentário deve seguir este modelo base:
+### Formato do Body para Plano de Ação (Apenas Caminho B)
+Se a sua decisão for o **Caminho B**, o `body` no comentário deve seguir este modelo:
 
 ```markdown
 ## 🤖 AI Assistant: Plan of Action
 
-Analisei a requisição. **O plano não será executado até ser aprovado.**
+Analisei a requisição e montei este plano. **Ele não será executado até ser aprovado.**
 
 **Arquivos que pretendo modificar:**
 - `caminho/do/arquivo1`
-- `caminho/do/arquivo2`
 
 **Passos Propostos:**
 - [ ] Passo 1: Descrever tecnicamente...
