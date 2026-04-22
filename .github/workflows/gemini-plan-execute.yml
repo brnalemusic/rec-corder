@@ -18,7 +18,7 @@ defaults:
 
 jobs:
   plan-execute:
-    timeout-minutes: 30
+    timeout-minutes: 60
     runs-on: 'ubuntu-latest'
     permissions:
       contents: 'write'
