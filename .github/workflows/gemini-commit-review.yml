@@ -15,6 +15,9 @@ defaults:
 jobs:
   get-commits:
     runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      pull-requests: 'read'
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
@@ -113,9 +116,11 @@ jobs:
                     "ghcr.io/github/github-mcp-server:v0.27.0"
                   ],
                   "includeTools": [
+                    "add_issue_comment",
                     "add_comment_to_pending_review",
                     "pull_request_read",
-                    "pull_request_review_write"
+                    "pull_request_review_write",
+                    "get_commit"
                   ],
                   "env": {
                     "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
@@ -124,10 +129,11 @@ jobs:
               },
               "tools": {
                 "core": [
-                  "run_shell_command(gh)",
-                  "run_shell_command(git)",
+                  "run_shell_command(cat)",
                   "run_shell_command(echo)",
-                  "run_shell_command(cat)"
+                  "run_shell_command(grep)",
+                  "run_shell_command(head)",
+                  "run_shell_command(tail)"
                 ]
               }
             }
