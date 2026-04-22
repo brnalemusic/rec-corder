@@ -7,6 +7,8 @@ on:
         type: 'string'
         description: 'Any additional context from the request'
         required: false
+  issues:
+    types: [opened]
 
 concurrency:
   group: '${{ github.workflow }}-triage-${{ github.event_name }}-${{ github.event.pull_request.number || github.event.issue.number }}'
