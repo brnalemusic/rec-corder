@@ -30,7 +30,7 @@ jobs:
         run: |
           # Tentativa de obter a lista de commits entre o estado anterior (before) e o atual (after)
           # Em caso de force push, isso pode falhar. Tratamos para evitar erros de workflow.
-          COMMITS=$(git log --format="%H" ${{ github.event.before }}..${{ github.event.after }} || echo "")
+          COMMITS=$(git log --format="%H" --no-merges --first-parent ${{ github.event.before }}..${{ github.event.after }} || echo "")
           
           if [ -z "$COMMITS" ]; then
             # Se a lista falhar (ou empty diff), pegamos apenas o commit que encabeça o push
@@ -127,6 +127,7 @@ jobs:
                   "includeTools": [
                     "add_issue_comment",
                     "add_comment_to_pending_review",
+                    "submit_pending_pull_request_review",
                     "pull_request_read",
                     "pull_request_review_write",
                     "get_commit"
