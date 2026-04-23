@@ -21,8 +21,17 @@ function getLatestRustMTime(dir) {
     const files = fs.readdirSync(dir);
 
     for (const file of files) {
+        // Pula diretórios de artefatos de build e dependências
+        if (file === 'target' || file === 'node_modules') continue;
+
         const fullPath = path.join(dir, file);
-        const stat = fs.statSync(fullPath);
+        let stat;
+        try {
+            stat = fs.statSync(fullPath);
+        } catch {
+            // Arquivo temporário pode ter sido removido entre readdir e stat
+            continue;
+        }
 
         if (stat.isDirectory()) {
             latest = Math.max(latest, getLatestRustMTime(fullPath));

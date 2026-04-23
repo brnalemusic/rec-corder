@@ -289,7 +289,7 @@ jobs:
       - 'fix'
       - 'fallthrough'
     if: |-
-      ${{ always() && !cancelled() && !failure() && needs.dispatch.outputs.reaction_id != '' }}
+      ${{ always() && needs.dispatch.outputs.reaction_id != '' }}
     runs-on: 'ubuntu-latest'
     permissions:
       contents: 'read'

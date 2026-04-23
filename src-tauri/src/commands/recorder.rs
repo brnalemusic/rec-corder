@@ -376,6 +376,7 @@ pub async fn stop_recording(
     // Sinaliza parada imediata das threads nativas de loopback C++ ou Alsa/PulseAudio
     active.stop_flag.store(true, std::sync::atomic::Ordering::Relaxed);
 
+    // Executa a finalização pesada do muxing (FFmpeg IO) em uma thread em blocking
     let stop_result = tokio::task::spawn_blocking(move || {
         std::thread::sleep(std::time::Duration::from_millis(200));
         active.session.stop()
@@ -386,8 +387,7 @@ pub async fn stop_recording(
         .lock()
         .as_ref()
         .map(|p| p.to_string_lossy().into_owned())
-    // Executa a finalização pesada do muxing (FFmpeg IO) em uma thead em blocking
-    let stop_result = tokio::task::spawn_blocking(move || {
+        .unwrap_or_default();
 
     let output_dir = state.output_dir.lock().clone();
 
