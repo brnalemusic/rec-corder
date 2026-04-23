@@ -230,6 +230,8 @@ jobs:
       - 'triage'
       - 'invoke'
       - 'plan-execute'
+      - 'issue-analyzer'
+      - 'fix'
     if: |-
       ${{ always() && !cancelled() && (failure() || needs.dispatch.outputs.command == 'fallthrough') }}
     runs-on: 'ubuntu-latest'
@@ -254,13 +256,27 @@ jobs:
         env:
           GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
           ISSUE_NUMBER: '${{ github.event.pull_request.number || github.event.issue.number }}'
+          COMMENT_ID: '${{ github.event.comment.id }}'
+          EVENT_NAME: '${{ github.event_name }}'
           MESSAGE: |-
-            🤖 I'm sorry @${{ github.actor }}, I'm the AI assistant for this repository and I encountered an error while trying to analyze your request. Please [see the logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details.
+            ❌ 🤖 I'm sorry @${{ github.actor }}, I'm the AI assistant for this repository and I encountered an error while trying to analyze your request. Please [see the logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details.
           REPOSITORY: '${{ github.repository }}'
         run: |-
           gh issue comment "${ISSUE_NUMBER}" \
             --body "${MESSAGE}" \
             --repo "${REPOSITORY}"
+          
+          if [ -n "${COMMENT_ID}" ]; then
+            if [ "${EVENT_NAME}" = "pull_request_review_comment" ]; then
+              ENDPOINT="/repos/${REPOSITORY}/pulls/comments/${COMMENT_ID}/reactions"
+            else
+              ENDPOINT="/repos/${REPOSITORY}/issues/comments/${COMMENT_ID}/reactions"
+            fi
+          else
+            ENDPOINT="/repos/${REPOSITORY}/issues/${ISSUE_NUMBER}/reactions"
+          fi
+          
+          gh api --method POST -H "Accept: application/vnd.github+json" "${ENDPOINT}" -f content='confused' --silent || true
 
   cleanup:
     needs:
@@ -273,7 +289,7 @@ jobs:
       - 'fix'
       - 'fallthrough'
     if: |-
-      ${{ always() && !cancelled() && success() && needs.dispatch.outputs.reaction_id != '' }}
+      ${{ always() && !cancelled() && !failure() && needs.dispatch.outputs.reaction_id != '' }}
     runs-on: 'ubuntu-latest'
     permissions:
       contents: 'read'
