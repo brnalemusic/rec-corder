@@ -59,6 +59,7 @@ pubkey.txt
 check.txt
 GIT_WORKFLOW.md
 cli/rec_corder_lib.so
+github_mcp_index.ts
 
 # --- Editor & OS Specific ---
 .vscode/*
@@ -82,6 +83,7 @@ model.py
 .openclaude-profile.json
 .openclaude
 ISSUE.md
+.gemini/
 
 # --- Python & CLI ---
 __pycache__/
@@ -97,6 +99,5 @@ temp_audio_*
 # --- ENVs ---
 .env
 *.pem
-.gemini/
 .gemini-test/
 gha-creds-*.json

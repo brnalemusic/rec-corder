@@ -1,10 +1,10 @@
-name: '🔍 Gemini Issue Analyzer'
+name: '🧙 Gemini Issue Fixer'
 
 on:
   workflow_call:
 
 concurrency:
-  group: '${{ github.workflow }}-analyzer-${{ github.event_name }}-${{ github.event.issue.number }}'
+  group: '${{ github.workflow }}-${{ github.head_ref || github.ref }}-${{ github.event.issue.number }}'
   cancel-in-progress: true
 
 defaults:
@@ -12,14 +12,17 @@ defaults:
     shell: 'bash'
 
 jobs:
-  analyze:
+  create-pr:
+    timeout-minutes: 30
     runs-on: 'ubuntu-latest'
-    timeout-minutes: 10
     permissions:
-      contents: 'read'
-      id-token: 'write'
-      issues: 'write'
+      contents: 'write' # Enable reading and modifying code
+      id-token: 'write' # Enable minting an identity token
+      issues: 'write' # Enable updating issues, such as posting a comment
+      pull-requests: 'write' # Enable creating pull requests
+
     steps:
+      # Mint a token so that the comments show up as gemini-cli instead of github-actions.
       - name: 'Mint identity token'
         id: 'mint_identity_token'
         if: |-
@@ -28,21 +31,25 @@ jobs:
         with:
           app-id: '${{ vars.APP_ID }}'
           private-key: '${{ secrets.APP_PRIVATE_KEY }}'
-          permission-contents: 'read'
+          permission-contents: 'write'
           permission-issues: 'write'
+          permission-pull-requests: 'write'
 
       - name: 'Checkout repository'
-        uses: 'actions/checkout@v4' # ratchet:exclude
+        uses: 'actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8' # ratchet:actions/checkout@v6
 
-      - name: 'Run Gemini Issue Analyzer'
-        id: 'gemini_analyzer'
+      - name: 'Run Gemini PR Create'
         uses: 'google-github-actions/run-gemini-cli@main' # ratchet:exclude
+        id: 'gemini_pr_create'
         env:
-          GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
+          GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN }}'
+          REPOSITORY: '${{ github.repository }}'
           ISSUE_NUMBER: '${{ github.event.issue.number }}'
           ISSUE_TITLE: '${{ github.event.issue.title }}'
           ISSUE_BODY: '${{ github.event.issue.body }}'
-          REPOSITORY: '${{ github.repository }}'
+          BRANCH_NAME: 'gemini-fix-${{ github.event.issue.number }}'
+          EVENT_NAME: '${{ github.event_name }}'
+          TRIGGERING_ACTOR: '${{ github.triggering_actor }}'
         with:
           gcp_location: '${{ vars.GOOGLE_CLOUD_LOCATION }}'
           gcp_project_id: '${{ vars.GOOGLE_CLOUD_PROJECT }}'
@@ -56,16 +63,11 @@ jobs:
           use_gemini_code_assist: '${{ vars.GOOGLE_GENAI_USE_GCA }}'
           use_vertex_ai: '${{ vars.GOOGLE_GENAI_USE_VERTEXAI }}'
           upload_artifacts: '${{ vars.UPLOAD_ARTIFACTS }}'
-          workflow_name: 'gemini-issue-analyzer'
           settings: |-
             {
+              "debug": ${{ fromJSON(vars.GEMINI_DEBUG || vars.ACTIONS_STEP_DEBUG || false) }},
               "model": {
-                "maxSessionTurns": 25
-              },
-              "telemetry": {
-                "enabled": true,
-                "target": "local",
-                "outfile": ".gemini/telemetry.log"
+                "maxSessionTurns": 200
               },
               "mcpServers": {
                 "github": {
@@ -78,21 +80,15 @@ jobs:
                     "GITHUB_PERSONAL_ACCESS_TOKEN",
                     "ghcr.io/github/github-mcp-server:v0.27.0"
                   ],
-                  "includeTools": [
-                    "add_issue_comment",
-                    "issue_read",
-                    "search_code",
-                    "get_file_contents"
-                  ],
                   "env": {
                     "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
                   }
                 }
               },
-              "tools": {
-                "core": [
-                  "run_shell_command(gh)"
-                ]
+              "telemetry": {
+                "enabled": true,
+                "target": "local",
+                "outfile": ".gemini/telemetry.log"
               }
             }
-          prompt: '/gemini-issue-analyzer'
+          prompt: '/gemini-issue-fixer'
