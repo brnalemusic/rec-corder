@@ -72,8 +72,9 @@ jobs:
             {
               "debug": ${{ fromJSON(vars.GEMINI_DEBUG || vars.ACTIONS_STEP_DEBUG || false) }},
               "model": {
-                "maxSessionTurns": 200
+                "maxSessionTurns": -1
               },
+              "system_instruction": "You are an expert software engineer tasked with fixing issues. Your core instructions are in the /custom-gemini-issue-fixer command. You MUST follow them strictly, including maintaining the checklist in the issue comments.",
               "mcpServers": {
                 "github": {
                   "command": "docker",

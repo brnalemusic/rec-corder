@@ -76,8 +76,9 @@ jobs:
           settings: |-
             {
               "model": {
-                "maxSessionTurns": 25
+                "maxSessionTurns": -1
               },
+              "system_instruction": "You are a world-class autonomous AI software engineering agent. Your core instructions are in the /custom-gemini-plan-execute command. You MUST verify the existence of an approved plan before taking any action.",
               "telemetry": {
                 "enabled": true,
                 "target": "local",

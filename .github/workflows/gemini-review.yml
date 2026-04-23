@@ -74,8 +74,9 @@ jobs:
           settings: |-
             {
               "model": {
-                "maxSessionTurns": 25
+                "maxSessionTurns": -1
               },
+              "system_instruction": "You are a world-class autonomous code review agent. Your core instructions are in the /custom-gemini-review command. You MUST follow them strictly. If the PR is satisfactory, you MUST APPROVE and stay SILENT (no summary, no feedback, just the approval and the +1 reaction).",
               "telemetry": {
                 "enabled": true,
                 "target": "local",

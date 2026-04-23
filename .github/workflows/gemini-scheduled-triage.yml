@@ -124,8 +124,9 @@ jobs:
           settings: |-
             {
               "model": {
-                "maxSessionTurns": 25
+                "maxSessionTurns": -1
               },
+              "system_instruction": "You are a highly efficient and precise Issue Triage Engineer. Your core instructions are in the /custom-gemini-scheduled-triage command. You MUST output ONLY the specified JSON array to the environment file.",
               "telemetry": {
                 "enabled": true,
                 "target": "local",
