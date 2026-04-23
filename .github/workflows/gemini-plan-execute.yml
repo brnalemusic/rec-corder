@@ -42,6 +42,11 @@ jobs:
       - name: 'Checkout Code'
         uses: 'actions/checkout@v4' # ratchet:exclude
 
+      - name: 'Install Custom Prompts'
+        run: |
+          mkdir -p .gemini/commands
+          cp .github/commands/gemini-plan-execute.toml .gemini/commands/custom-gemini-plan-execute.toml
+
       - name: 'Run Gemini CLI'
         id: 'run_gemini'
         uses: 'google-github-actions/run-gemini-cli@main' # ratchet:exclude
@@ -123,4 +128,4 @@ jobs:
                 ]
               }
             }
-          prompt: '/gemini-plan-execute'
+          prompt: '/custom-gemini-plan-execute'

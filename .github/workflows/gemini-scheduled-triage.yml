@@ -85,6 +85,18 @@ jobs:
           ISSUE_COUNT="$(echo "${ISSUES}" | jq 'length')"
           echo "✅ Found ${ISSUE_COUNT} issue(s) to triage! 🎯"
 
+      - name: 'Checkout repository'
+        if: |-
+          ${{ steps.find_issues.outputs.issues_to_triage != '[]' }}
+        uses: 'actions/checkout@v4' # ratchet:exclude
+
+      - name: 'Install Custom Prompts'
+        if: |-
+          ${{ steps.find_issues.outputs.issues_to_triage != '[]' }}
+        run: |
+          mkdir -p .gemini/commands
+          cp .github/commands/gemini-scheduled-triage.toml .gemini/commands/custom-gemini-scheduled-triage.toml
+
       - name: 'Run Gemini Issue Analysis'
         id: 'gemini_issue_analysis'
         if: |-
@@ -127,7 +139,7 @@ jobs:
                 ]
               }
             }
-          prompt: '/gemini-scheduled-triage'
+          prompt: '/custom-gemini-scheduled-triage'
 
   label:
     runs-on: 'ubuntu-latest'

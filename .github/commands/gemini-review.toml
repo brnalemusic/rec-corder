@@ -134,6 +134,8 @@ Apply these severities consistently:
 1. **Create Pending Review:** Call `create_pending_pull_request_review`. Ignore errors like "can only have one pending review per pull request" and proceed to the next step.
 
 2. **Add Comments and Suggestions:** For each formulated review comment, call `add_comment_to_pending_review`.
+    - **Crucial Rule:** ALL code feedback, suggestions, and identified issues MUST be sent exclusively as inline comments using this tool. Do NOT include specific suggestions or code feedback in a general summary.
+    - **Tone & Severity:** The inline comments MUST use a serious, highly technical tone. You MUST explicitly explain the gravity of the problem using the assigned severity level (🔴, 🟠, 🟡, 🟢) and its definition.
 
     2a. When there is a code suggestion (preferred), structure the comment payload using this exact template. Utilizing the ````suggestion```` markdown block enables GitHub's 1-click commit feature directly in the "Files Changed" area, which is extremely helpful for the author. Make sure the code inside the block perfectly replaces the commented line.
 
@@ -151,10 +153,9 @@ Apply these severities consistently:
         {{SEVERITY}} {{COMMENT_TEXT}}
         </COMMENT>
 
-3. **Submit Final Review:** Call `submit_pending_pull_request_review` with a summary comment.
-    - If the PR is mostly satisfactory, follows good practices, and you have no major blocking suggestions, you **MUST** submit the pending review using the `APPROVE` event type. You **MUST ALSO** add a "+1" (like) reaction to the pull request by calling the `run_shell_command` tool with the command `gh issue comment !{echo $PULL_REQUEST_NUMBER} --add-reaction "+1" --repo !{echo $REPOSITORY}`. This rule is absolute and applies REGARDLESS of whether you were invoked via a new PR opening or via a manual `@gemini-cli /review` comment.
-    - Otherwise, use the `COMMENT` event type. **DO NOT** use `REQUEST_CHANGES`.
-    - The summary comment **MUST** use this exact markdown format:
+3. **Submit Final Review:** Call `mcp_github_pull_request_review_write` with method `submit_pending` to submit the pending review.
+    - **Approval Condition:** If the PR is excellent, mostly satisfactory, follows good practices, and you did NOT create any inline comments (because there are no issues), you **MUST** submit the pending review using the `APPROVE` event type with an empty body. You **MUST ALSO** add a "+1" (like) reaction to the pull request by calling the `run_shell_command` tool with the command `gh issue comment !{echo $PULL_REQUEST_NUMBER} --add-reaction "+1" --repo !{echo $REPOSITORY}`. If you approve the PR, **DO NOT** output the `<SUMMARY>` block, do NOT provide general feedback, and **DO NOT** send any other message.
+    - **Comment Condition:** Otherwise (if the PR needs improvements, has issues, or you added inline comments), use the `COMMENT` event type. **DO NOT** use `REQUEST_CHANGES`. In this case, the summary comment body **MUST** use this exact markdown format:
 
     <SUMMARY>
     ## 📋 Review Summary

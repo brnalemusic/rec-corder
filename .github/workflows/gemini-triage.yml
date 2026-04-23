@@ -55,6 +55,18 @@ jobs:
             core.info(`Found ${labelNames.length} labels: ${labelNames.join(', ')}`);
             return labelNames;
 
+      - name: 'Checkout repository'
+        if: |-
+          ${{ steps.get_labels.outputs.available_labels != '' }}
+        uses: 'actions/checkout@v4'
+
+      - name: 'Install Custom Prompts'
+        if: |-
+          ${{ steps.get_labels.outputs.available_labels != '' }}
+        run: |
+          mkdir -p .gemini/commands
+          cp .github/commands/gemini-triage.toml .gemini/commands/custom-gemini-triage.toml
+
       - name: 'Run Gemini issue analysis'
         id: 'gemini_analysis'
         if: |-
@@ -95,7 +107,7 @@ jobs:
                 ]
               }
             }
-          prompt: '/gemini-triage'
+          prompt: '/custom-gemini-triage'
 
   label:
     runs-on: 'ubuntu-latest'

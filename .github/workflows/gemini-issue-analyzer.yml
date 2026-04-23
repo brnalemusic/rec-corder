@@ -34,6 +34,11 @@ jobs:
       - name: 'Checkout repository'
         uses: 'actions/checkout@v4' # ratchet:exclude
 
+      - name: 'Install Custom Prompts'
+        run: |
+          mkdir -p .gemini/commands
+          cp .github/commands/gemini-issue-analyzer.toml .gemini/commands/custom-gemini-issue-analyzer.toml
+
       - name: 'Run Gemini Issue Analyzer'
         id: 'gemini_analyzer'
         uses: 'google-github-actions/run-gemini-cli@main' # ratchet:exclude
@@ -95,4 +100,4 @@ jobs:
                 ]
               }
             }
-          prompt: '/gemini-issue-analyzer'
+          prompt: '/custom-gemini-issue-analyzer'

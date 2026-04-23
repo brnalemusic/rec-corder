@@ -41,6 +41,11 @@ jobs:
       - name: 'Checkout repository'
         uses: 'actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8' # ratchet:actions/checkout@v6
 
+      - name: 'Install Custom Prompts'
+        run: |
+          mkdir -p .gemini/commands
+          cp .github/commands/gemini-review.toml .gemini/commands/custom-gemini-review.toml
+
       - name: 'Run Gemini pull request review'
         uses: 'google-github-actions/run-gemini-cli@main' # ratchet:exclude
         id: 'gemini_pr_review'
@@ -112,4 +117,4 @@ jobs:
             [
               "https://github.com/gemini-cli-extensions/code-review"
             ]
-          prompt: '/gemini-review'
+          prompt: '/custom-gemini-review'

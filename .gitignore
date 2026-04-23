@@ -61,6 +61,7 @@ check.txt
 GIT_WORKFLOW.md
 cli/rec_corder_lib.so
 github_mcp_index.ts
+list_tools.cjs
 
 # --- Editor & OS Specific ---
 .vscode/*

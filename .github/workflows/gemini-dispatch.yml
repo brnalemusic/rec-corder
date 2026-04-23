@@ -139,8 +139,8 @@ jobs:
           fi
           
           gh api --method POST -H "Accept: application/vnd.github+json" "${ENDPOINT}" -f content='eyes' --silent > reaction.json || true
-          echo -n "reaction_id=" >> $GITHUB_OUTPUT
-          jq -r '.id // empty' reaction.json >> $GITHUB_OUTPUT
+          REACTION_ID=$(jq -r '.id // empty' reaction.json 2>/dev/null || echo "")
+          echo "reaction_id=${REACTION_ID}" >> $GITHUB_OUTPUT
           echo "reaction_endpoint=${ENDPOINT}" >> $GITHUB_OUTPUT
 
   review:

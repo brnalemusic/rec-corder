@@ -38,6 +38,11 @@ jobs:
       - name: 'Checkout repository'
         uses: 'actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8' # ratchet:actions/checkout@v6
 
+      - name: 'Install Custom Prompts'
+        run: |
+          mkdir -p .gemini/commands
+          cp .github/commands/gemini-issue-fixer.toml .gemini/commands/custom-gemini-issue-fixer.toml
+
       - name: 'Run Gemini PR Create'
         uses: 'google-github-actions/run-gemini-cli@main' # ratchet:exclude
         id: 'gemini_pr_create'
@@ -91,4 +96,4 @@ jobs:
                 "outfile": ".gemini/telemetry.log"
               }
             }
-          prompt: '/gemini-issue-fixer'
+          prompt: '/custom-gemini-issue-fixer'
