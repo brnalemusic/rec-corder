@@ -18,9 +18,31 @@ const downloadPercent = document.getElementById('download-percent');
 const downloadStatus = document.getElementById('download-status');
 const changelogContainer = document.getElementById('changelog-container');
 const changelogContent = document.getElementById('changelog-content');
+const DOWNLOAD_PAGE_URL = 'https://www.reccorder.com.br';
 
 /** @type {Function|undefined} Função de callback para desvincular o listener dos dados. */
 let unlistenData;
+
+/**
+ * Intercepta links dentro de um container para abrir no navegador externo.
+ * @param {HTMLElement} container
+ */
+function attachExternalLinkHandler(container) {
+  if (!container || container.dataset.externalLinkHandlerAttached === 'true') return;
+
+  container.addEventListener('click', (event) => {
+    const link = event.target.closest('a');
+    if (!link) return;
+
+    const href = link.getAttribute('href');
+    if (!href) return;
+
+    event.preventDefault();
+    recorder.openLink(href);
+  });
+
+  container.dataset.externalLinkHandlerAttached = 'true';
+}
 
 /**
  * Inicializa a janela do atualizador e aguarda dados do backend.
@@ -138,6 +160,8 @@ async function init() {
         if (window.Prism) {
           window.Prism.highlightAllUnder(changelogContent);
         }
+
+        attachExternalLinkHandler(changelogContent);
       } else {
         changelogContent.textContent = processedBody;
       }
@@ -213,9 +237,11 @@ function showError(error) {
     <div class="error-text">
       Não foi possível concluir a atualização automática.<br>
       Por favor, baixe a versão mais recente manualmente em: 
-      <span class="download-link" onclick="import('./recorder.js').then(r => r.invoke('open_link', { url: 'https://www.reccorder.com.br' }))">www.reccorder.com.br</span>
+      <a class="download-link" href="${DOWNLOAD_PAGE_URL}">www.reccorder.com.br</a>
     </div>
   `;
+
+  attachExternalLinkHandler(statusText);
   
   btnInstall.classList.add('hidden');
   btnCancel.textContent = 'Fechar';
