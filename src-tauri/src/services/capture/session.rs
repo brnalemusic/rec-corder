@@ -46,6 +46,7 @@ pub struct CaptureSession {
     _capture_guard: Option<()>,
     mic_capture: Option<NativeAudioCapture>,
     system_audio_capture: Option<NativeAudioCapture>,
+    video_start_qpc: Option<u64>,
 }
 
 /// Constrói o caminho para o arquivo de log do FFmpeg.
@@ -294,7 +295,7 @@ impl CaptureSession {
 
         // Adiciona input da webcam se configurado
         if let Some(wc) = webcam_config {
-            append_webcam_input(&mut cmd, &wc.device_name);
+            append_webcam_input(&mut cmd, &wc.device_name, fps);
         }
 
         // Quando a webcam está ativa, usamos filter_complex para compor overlay.
@@ -304,9 +305,9 @@ impl CaptureSession {
                 _ => "yuv420p",
             };
             let base_vf = build_capture_filter(scale_factor, fps, pixel_format);
-            let filter_complex = build_webcam_overlay_filter(&base_vf, &wc.position, wc.size_percent);
+            let filter_complex = build_webcam_overlay_filter(&base_vf, &wc.position, wc.size_percent, pixel_format, fps);
 
-            cmd.args(["-filter_complex", &filter_complex, "-map", "[out]"]);
+            cmd.args(["-filter_complex", &filter_complex, "-map", "[out]", "-threads", "0", "-filter_threads", "auto"]);
 
             // Encoder codec e qualidade (sem -vf, que está no filter_complex)
             match strategy {
@@ -365,6 +366,7 @@ impl CaptureSession {
             }
         };
 
+        #[cfg(target_os = "windows")]
         let mut session = Self {
             process,
             final_output_path,
@@ -374,6 +376,7 @@ impl CaptureSession {
             _capture_guard: capture_guard,
             mic_capture,
             system_audio_capture,
+            video_start_qpc: None,
         };
 
         if let Err(err) = session.ensure_started() {
@@ -391,30 +394,68 @@ impl CaptureSession {
         Ok(session)
     }
 
-    /// Verifica se o FFmpeg não fechou prematuramente após o spawn.
+    /// Verifica se o FFmpeg não fechou prematuramente e aguarda o início real do fluxo de dados.
     fn ensure_started(&mut self) -> Result<(), RecorderError> {
-        std::thread::sleep(Duration::from_millis(500));
+        let start_wait = std::time::Instant::now();
+        let timeout = Duration::from_secs(12); // Aumentado para 12s (encoders AMD/Intel podem demorar)
+        let poll_interval = Duration::from_millis(100);
 
-        if let Some(status) = self.process.try_wait()? {
-            let log_tail = read_log_tail(&self.log_path);
-            let partial_size = fs::metadata(&self.video_output_path)
-                .map(|metadata| metadata.len())
-                .unwrap_or(0);
+        while start_wait.elapsed() < timeout {
+            if let Some(status) = self.process.try_wait()? {
+                let log_tail = read_log_tail(&self.log_path);
+                return Err(RecorderError::CaptureInit(format!(
+                    "FFmpeg encerrou prematuramente (codigo {:?}). {}",
+                    status.code(),
+                    log_tail
+                )));
+            }
 
-            return Err(RecorderError::CaptureInit(format!(
-                "FFmpeg encerrou logo apos iniciar com {} (codigo {:?}). Arquivo parcial: {} bytes. {}",
-                self.encoder_label,
-                status.code(),
-                partial_size,
-                if log_tail.is_empty() {
-                    format!("Consulte o log em {:?}", self.log_path)
-                } else {
-                    format!("Detalhes do FFmpeg: {}", log_tail)
+            // Lê o log para procurar sinais de atividade
+            // Usamos uma leitura resiliente para evitar conflitos de acesso no Windows
+            let log_content = fs::read_to_string(&self.log_path).unwrap_or_default();
+            
+            // Sinais de que a gravação REAL começou:
+            // 1. "frame=" aparece no log (indica que frames estao sendo codificados)
+            // 2. "Press [q] to stop" (indica que o loop principal do FFmpeg iniciou)
+            let data_started = log_content.contains("frame=") || log_content.contains("Press [q] to stop");
+
+            // Fallback: Se o arquivo de vídeo já tem um tamanho razoável (> 1KB), 
+            // assumimos que começou mesmo se o log estiver atrasado.
+            let size = fs::metadata(&self.video_output_path).map(|m| m.len()).unwrap_or(0);
+            let size_trigger = size > 2048; 
+
+            if data_started || size_trigger {
+                #[cfg(target_os = "windows")]
+                {
+                    let mut qpc = 0i64;
+                    unsafe {
+                        let _ = windows::Win32::System::Performance::QueryPerformanceCounter(&mut qpc);
+                    }
+                    
+                    let mut freq = 0i64;
+                    unsafe {
+                        let _ = windows::Win32::System::Performance::QueryPerformanceFrequency(&mut freq);
+                    }
+                    
+                    // Se foi pelo tamanho do arquivo (fallback), o vídeo já começou há algum tempo.
+                    // Se foi pelo log, a latência é menor.
+                    let compensation_sec = if size_trigger && !data_started { 0.3 } else { 0.1 };
+                    let compensation_ticks = (compensation_sec * freq as f64) as u64;
+                    
+                    self.video_start_qpc = Some(qpc as u64 - compensation_ticks);
+                    
+                    println!("Sync: Video started (via {}). Adjusted QPC: {:?}", 
+                        if data_started { "log" } else { "file size" }, 
+                        self.video_start_qpc
+                    );
                 }
-            )));
+                return Ok(());
+            }
+
+            std::thread::sleep(poll_interval);
         }
 
-        Ok(())
+        Err(RecorderError::CaptureInit("O encoder demorou demais para iniciar. Tente novamente ou verifique se há outros apps usando a GPU.".into()))
     }
 
     /// Valida se o arquivo gerado possui um tamanho mínimo aceitável.
@@ -481,7 +522,7 @@ impl CaptureSession {
         let mut cmd = Command::new(ffmpeg_path);
         #[cfg(target_os = "windows")]
         cmd.creation_flags(CREATE_NO_WINDOW);
-        cmd.args(["-hide_banner", "-loglevel", "error", "-i"]);
+        cmd.args(["-hide_banner", "-loglevel", "info", "-i"]);
         cmd.arg(self.video_output_path.to_string_lossy().to_string());
 
         for track in tracks {
@@ -492,8 +533,31 @@ impl CaptureSession {
                 &track.sample_rate.to_string(),
                 "-ac",
                 &track.channels.to_string(),
-                "-i",
             ]);
+
+            #[cfg(target_os = "windows")]
+            if let (Some(v_qpc), Some(a_qpc)) = (self.video_start_qpc, track.start_qpc) {
+                let mut freq = 0i64;
+                unsafe {
+                    let _ = windows::Win32::System::Performance::QueryPerformanceFrequency(&mut freq);
+                }
+                if freq > 0 {
+                    let diff_ticks = v_qpc as i64 - a_qpc as i64;
+                    let offset_sec = diff_ticks as f64 / freq as f64;
+                    
+                    if offset_sec > 0.001 {
+                        // Áudio iniciou antes: aparamos o início do áudio para sincronizar.
+                        println!("Sync: Audio iniciou {:.3}s antes. Aplicando -ss no mux.", offset_sec);
+                        cmd.args(["-ss", &format!("{:.3}", offset_sec)]);
+                    } else if offset_sec < -0.001 {
+                        // Vídeo iniciou antes: atrasamos a entrada de áudio.
+                        println!("Sync: Video iniciou {:.3}s antes. Aplicando -itsoffset no mux.", -offset_sec);
+                        cmd.args(["-itsoffset", &format!("{:.3}", -offset_sec)]);
+                    }
+                }
+            }
+
+            cmd.arg("-i");
             cmd.arg(track.path.to_string_lossy().to_string());
         }
 
