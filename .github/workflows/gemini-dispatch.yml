@@ -68,6 +68,8 @@ jobs:
       request: '${{ steps.extract_command.outputs.request }}'
       additional_context: '${{ steps.extract_command.outputs.additional_context }}'
       issue_number: '${{ github.event.pull_request.number || github.event.issue.number }}'
+      reaction_id: '${{ steps.ack.outputs.reaction_id }}'
+      reaction_endpoint: '${{ steps.ack.outputs.reaction_endpoint }}'
     steps:
       - name: 'Mint identity token'
         id: 'mint_identity_token'
@@ -118,6 +120,7 @@ jobs:
             }
 
       - name: 'Acknowledge request'
+        id: 'ack'
         env:
           GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
           ISSUE_NUMBER: '${{ github.event.pull_request.number || github.event.issue.number }}'
@@ -131,10 +134,14 @@ jobs:
             else
               ENDPOINT="/repos/${REPOSITORY}/issues/comments/${COMMENT_ID}/reactions"
             fi
-            gh api --method POST -H "Accept: application/vnd.github+json" "${ENDPOINT}" -f content='eyes' --silent || true
           else
-            gh api --method POST -H "Accept: application/vnd.github+json" "/repos/${REPOSITORY}/issues/${ISSUE_NUMBER}/reactions" -f content='eyes' --silent || true
+            ENDPOINT="/repos/${REPOSITORY}/issues/${ISSUE_NUMBER}/reactions"
           fi
+          
+          gh api --method POST -H "Accept: application/vnd.github+json" "${ENDPOINT}" -f content='eyes' --silent > reaction.json || true
+          echo -n "reaction_id=" >> $GITHUB_OUTPUT
+          jq -r '.id // empty' reaction.json >> $GITHUB_OUTPUT
+          echo "reaction_endpoint=${ENDPOINT}" >> $GITHUB_OUTPUT
 
   review:
     needs: 'dispatch'
@@ -254,3 +261,41 @@ jobs:
           gh issue comment "${ISSUE_NUMBER}" \
             --body "${MESSAGE}" \
             --repo "${REPOSITORY}"
+
+  cleanup:
+    needs:
+      - 'dispatch'
+      - 'review'
+      - 'triage'
+      - 'invoke'
+      - 'plan-execute'
+      - 'issue-analyzer'
+      - 'fix'
+      - 'fallthrough'
+    if: |-
+      ${{ always() && !cancelled() && success() && needs.dispatch.outputs.reaction_id != '' }}
+    runs-on: 'ubuntu-latest'
+    permissions:
+      contents: 'read'
+      issues: 'write'
+      pull-requests: 'write'
+    steps:
+      - name: 'Mint identity token'
+        id: 'mint_identity_token'
+        if: |-
+          ${{ vars.APP_ID }}
+        uses: 'actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf' # ratchet:actions/create-github-app-token@v2
+        with:
+          app-id: '${{ vars.APP_ID }}'
+          private-key: '${{ secrets.APP_PRIVATE_KEY }}'
+          permission-contents: 'read'
+          permission-issues: 'write'
+          permission-pull-requests: 'write'
+
+      - name: 'Remove Acknowledge reaction'
+        env:
+          GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
+          REACTION_ID: '${{ needs.dispatch.outputs.reaction_id }}'
+          ENDPOINT: '${{ needs.dispatch.outputs.reaction_endpoint }}'
+        run: |-
+          gh api --method DELETE -H "Accept: application/vnd.github+json" "${ENDPOINT}/${REACTION_ID}" --silent || true
