@@ -103,3 +103,4 @@ temp_audio_*
 *.pem
 .gemini-test/
 gha-creds-*.json
+.gemini/

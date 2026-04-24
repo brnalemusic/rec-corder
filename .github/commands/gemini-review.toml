@@ -151,15 +151,10 @@ Apply these severities consistently:
         {{SEVERITY}} {{COMMENT_TEXT}}
         </COMMENT>
 
-3. **Submit Final Review:** Call `submit_pending_pull_request_review`.
-
-    - If you found issues with severity `🔴` (Critical) or `🟠` (High), use the event type "REQUEST_CHANGES".
-    - If you found no issues or only issues with severity `🟡` (Medium) or `🟢` (Low) and consider the PR safe to merge, use the event type "APPROVE". When using "APPROVE", the summary comment **MUST** be exactly "Approved".
-    - Otherwise, use the event type "COMMENT".
-
-    - For "REQUEST_CHANGES" and "COMMENT" event types, the summary comment **MUST** use this exact markdown format:
+3. **Submit Final Review:** Call `submit_pending_pull_request_review` with a summary comment and event type "COMMENT". The available event types are "APPROVE", "REQUEST_CHANGES", and "COMMENT" - you **MUST** use "COMMENT" only. **DO NOT** use "APPROVE" or "REQUEST_CHANGES" event types. The summary comment **MUST** use this exact markdown format:
 
     <SUMMARY>
+
     ## 📋 Review Summary
 
     A brief, high-level assessment of the Pull Request's objective and quality (2-3 sentences).
