@@ -138,7 +138,7 @@ jobs:
             ENDPOINT="/repos/${REPOSITORY}/issues/${ISSUE_NUMBER}/reactions"
           fi
           
-          gh api --method POST -H "Accept: application/vnd.github+json" "${ENDPOINT}" -f content='eyes' --silent > reaction.json || true
+          gh api --method POST -H "Accept: application/vnd.github+json" "${ENDPOINT}" -f content='eyes' > reaction.json || true
           REACTION_ID=$(jq -r '.id // empty' reaction.json 2>/dev/null || echo "")
           echo "reaction_id=${REACTION_ID}" >> $GITHUB_OUTPUT
           echo "reaction_endpoint=${ENDPOINT}" >> $GITHUB_OUTPUT
@@ -276,7 +276,7 @@ jobs:
             ENDPOINT="/repos/${REPOSITORY}/issues/${ISSUE_NUMBER}/reactions"
           fi
           
-          gh api --method POST -H "Accept: application/vnd.github+json" "${ENDPOINT}" -f content='confused' --silent || true
+          gh api --method POST -H "Accept: application/vnd.github+json" "${ENDPOINT}" -f content='confused' || true
 
   cleanup:
     needs:
@@ -289,7 +289,7 @@ jobs:
       - 'fix'
       - 'fallthrough'
     if: |-
-      ${{ always() && needs.dispatch.outputs.reaction_id != '' }}
+      ${{ always() && !cancelled() }}
     runs-on: 'ubuntu-latest'
     permissions:
       contents: 'read'
@@ -314,4 +314,4 @@ jobs:
           REACTION_ID: '${{ needs.dispatch.outputs.reaction_id }}'
           ENDPOINT: '${{ needs.dispatch.outputs.reaction_endpoint }}'
         run: |-
-          gh api --method DELETE -H "Accept: application/vnd.github+json" "${ENDPOINT}/${REACTION_ID}" --silent || true
+          gh api --method DELETE -H "Accept: application/vnd.github+json" "${ENDPOINT}/${REACTION_ID}" || true

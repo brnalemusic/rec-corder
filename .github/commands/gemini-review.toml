@@ -154,7 +154,10 @@ Apply these severities consistently:
         </COMMENT>
 
 3. **Submit Final Review:** Call `mcp_github_pull_request_review_write` with method `submit_pending` to submit the pending review.
-    - **Approval Condition:** If the PR is excellent, mostly satisfactory, follows good practices, and you did NOT create any inline comments (because there are no issues), you **MUST** submit the pending review using the `APPROVE` event type with an empty body. You **MUST ALSO** add a "+1" (like) reaction to the pull request by calling the `run_shell_command` tool with the command `gh issue comment !{echo $PULL_REQUEST_NUMBER} --add-reaction "+1" --repo !{echo $REPOSITORY}`. If you approve the PR, **DO NOT** output the `<SUMMARY>` block, do NOT provide general feedback, and **DO NOT** send any other message.
+    - **Approval Condition:** If the PR is excellent, mostly satisfactory, follows good practices, and you did NOT create any inline comments (because there are no issues), you **MUST** attempt to submit the pending review using the `APPROVE` event type with an empty body. 
+        - **Self-Approval Note:** If you receive an error stating you cannot approve your own pull request, ignore the error and proceed. 
+        - **Reaction:** You **MUST ALSO** add a "+1" (like) reaction to the pull request by calling the `run_shell_command` tool with the command: `gh api --method POST -H "Accept: application/vnd.github+json" /repos/!{echo $REPOSITORY}/issues/!{echo $PULL_REQUEST_NUMBER}/reactions -f content='+1'`. 
+        - **Silence:** If you approve (or would have approved if not for the self-approval restriction), **DO NOT** output the `<SUMMARY>` block, do NOT provide general feedback, and **DO NOT** send any other message.
     - **Comment Condition:** Otherwise (if the PR needs improvements, has issues, or you added inline comments), use the `COMMENT` event type. **DO NOT** use `REQUEST_CHANGES`. In this case, the summary comment body **MUST** use this exact markdown format:
 
     <SUMMARY>
