@@ -68,7 +68,7 @@ jobs:
             {
               "debug": ${{ fromJSON(vars.GEMINI_DEBUG || vars.ACTIONS_STEP_DEBUG || false) }},
               "model": {
-                "maxSessionTurns": 200
+                "maxSessionTurns": 500
               },
               "mcpServers": {
                 "github": {
@@ -86,10 +86,10 @@ jobs:
                   }
                 }
               },
-              "telemetry": {
-                "enabled": true,
-                "target": "local",
-                "outfile": ".gemini/telemetry.log"
-              }
+              "tools": {
+                "core": [
+                  "run_shell_command(*)"
+                ]
+              },
             }
           prompt: '/gemini-issue-fixer'

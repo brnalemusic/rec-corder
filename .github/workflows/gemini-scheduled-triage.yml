@@ -113,7 +113,7 @@ jobs:
           settings: |-
             {
               "model": {
-                "maxSessionTurns": 25
+                "maxSessionTurns": 200
               },
               "telemetry": {
                 "enabled": true,
@@ -122,9 +122,7 @@ jobs:
               },
               "tools": {
                 "core": [
-                  "run_shell_command(echo)",
-                  "run_shell_command(jq)",
-                  "run_shell_command(printenv)"
+                  "run_shell_command(*)"
                 ]
               }
             }

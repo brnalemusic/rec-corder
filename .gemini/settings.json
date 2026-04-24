@@ -2,6 +2,11 @@
   "model": {
     "maxSessionTurns": -1
   },
+  "tools": {
+    "core": [
+      "run_shell_command(*)"
+    ]
+  },
   "mcpServers": {
     "github": {
       "command": "npx",
