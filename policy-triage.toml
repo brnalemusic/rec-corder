@@ -1,0 +1,9 @@
+# Minimal shell allowance for triage workflows.
+# They only need to append computed labels back to GITHUB_ENV.
+
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = "echo"
+decision = "allow"
+priority = 999
+allowRedirection = true

@@ -54,7 +54,6 @@ jobs:
           REPOSITORY: '${{ github.repository }}'
           ADDITIONAL_CONTEXT: '${{ inputs.additional_context }}'
           GEMINI_CLI_TRUST_WORKSPACE: true
-          GEMINI_CLI_POLICY_FILE: './policy.toml'
         with:
           gcp_location: '${{ vars.GOOGLE_CLOUD_LOCATION }}'
           gcp_project_id: '${{ vars.GOOGLE_CLOUD_PROJECT }}'
@@ -74,6 +73,9 @@ jobs:
               "model": {
                 "maxSessionTurns": 200
               },
+              "policyPaths": [
+                "./policy-readonly-shell.toml"
+              ],
               "telemetry": {
                 "enabled": true,
                 "target": "local",
@@ -107,11 +109,6 @@ jobs:
                     "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
                   }
                 }
-              },
-              "tools": {
-                "core": [
-                  "run_shell_command(*)"
-                ]
               }
             }
           prompt: '/gemini-invoke'

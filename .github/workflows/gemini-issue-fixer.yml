@@ -51,7 +51,6 @@ jobs:
           EVENT_NAME: '${{ github.event_name }}'
           TRIGGERING_ACTOR: '${{ github.triggering_actor }}'
           GEMINI_CLI_TRUST_WORKSPACE: true
-          GEMINI_CLI_POLICY_FILE: './policy.toml'
         with:
           gcp_location: '${{ vars.GOOGLE_CLOUD_LOCATION }}'
           gcp_project_id: '${{ vars.GOOGLE_CLOUD_PROJECT }}'
@@ -71,6 +70,9 @@ jobs:
               "model": {
                 "maxSessionTurns": 500
               },
+              "policyPaths": [
+                "./policy.toml"
+              ],
               "mcpServers": {
                 "github": {
                   "command": "docker",
@@ -86,11 +88,6 @@ jobs:
                     "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
                   }
                 }
-              },
-              "tools": {
-                "core": [
-                  "run_shell_command(*)"
-                ]
-              },
+              }
             }
           prompt: '/gemini-issue-fixer'

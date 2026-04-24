@@ -1,5 +1,7 @@
+# Broad shell allowance for trusted Gemini workflows.
+# Loaded explicitly via `policyPaths` in workflow settings.
 [[rule]]
+toolName = "run_shell_command"
 decision = "allow"
-toolName = "*"
-argsPattern = ".*"
-priority = 10000
+priority = 999
+allowRedirection = true

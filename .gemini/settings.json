@@ -2,14 +2,9 @@
   "model": {
     "maxSessionTurns": 500
   },
-  "tools": {
-    "core": [
-      "run_shell_command(*)"
-    ]
-  },
-  "policy": {
-    "file": "./policy.toml"
-  },
+  "policyPaths": [
+    "./policy.toml"
+  ],
   "mcpServers": {
     "github": {
       "command": "npx",
