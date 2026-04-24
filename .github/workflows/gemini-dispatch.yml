@@ -105,6 +105,8 @@ jobs:
               core.setOutput('additional_context', additionalContext);
             } else if (request.startsWith("@gemini-cli /triage")) {
               core.setOutput('command', 'triage');
+            } else if (request.startsWith("@gemini-cli /analyze")) {
+              core.setOutput('command', 'analyze');
             } else if (request.startsWith("@gemini-cli /approve")) {
               core.setOutput('command', 'approve');
               const additionalContext = request.replace(/^@gemini-cli \/approve/, '').trim();
@@ -315,4 +317,3 @@ jobs:
           ENDPOINT: '${{ needs.dispatch.outputs.reaction_endpoint }}'
         run: |-
           gh api --method DELETE -H "Accept: application/vnd.github+json" "${ENDPOINT}/${REACTION_ID}" || true
-ccept: application/vnd.github+json" "${ENDPOINT}/${REACTION_ID}" || true
