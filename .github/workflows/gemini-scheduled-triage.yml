@@ -127,21 +127,29 @@ jobs:
               "model": {
                 "maxSessionTurns": -1
               },
-              "system_instruction": "You are a highly efficient and precise Issue Triage Engineer. Your core instructions are in the /custom-gemini-scheduled-triage command. You MUST output ONLY the specified JSON array to the environment file.",
+              "system_instruction": "You are a highly efficient and precise Issue Triage Engineer. Your core instructions are in the /custom-gemini-scheduled-triage command. You MUST identify appropriate labels and respond with TRIAGED_ISSUES=... as instructed.",
               "telemetry": {
                 "enabled": true,
                 "target": "local",
                 "outfile": ".gemini/telemetry.log"
-              },
-              "tools": {
-                "core": [
-                  "run_shell_command(echo)",
-                  "run_shell_command(jq)",
-                  "run_shell_command(printenv)"
-                ]
               }
             }
           prompt: '/custom-gemini-scheduled-triage'
+
+      - name: 'Extract triage results from response'
+        if: |-
+          ${{ steps.find_issues.outputs.issues_to_triage != '[]' }}
+        run: |
+          # Use grep and cut to extract the TRIAGED_ISSUES line
+          RESULTS=$(echo "${{ steps.gemini_issue_analysis.outputs.gemini_response }}" | grep "TRIAGED_ISSUES=" | head -n 1 | cut -d'=' -f2- | tr -d '\r')
+          
+          if [ -z "$RESULTS" ] || [ "$RESULTS" = "[]" ]; then
+            echo "TRIAGED_ISSUES=[]" >> $GITHUB_ENV
+            echo "No issues triaged."
+          else
+            echo "TRIAGED_ISSUES=$RESULTS" >> $GITHUB_ENV
+            echo "Triaged issues found."
+          fi
 
   label:
     runs-on: 'ubuntu-latest'

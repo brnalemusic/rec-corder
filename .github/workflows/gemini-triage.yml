@@ -97,19 +97,30 @@ jobs:
               "model": {
                 "maxSessionTurns": -1
               },
-              "system_instruction": "You are an issue triage assistant. Your core instructions are in the /custom-gemini-triage command. You MUST follow the labeling logic and write the results to the environment file strictly as instructed.",
+              "system_instruction": "You are an issue triage assistant. Your core instructions are in the /custom-gemini-triage command. You MUST identify appropriate labels and respond with SELECTED_LABELS=... as instructed.",
               "telemetry": {
                 "enabled": true,
                 "target": "local",
                 "outfile": ".gemini/telemetry.log"
-              },
-              "tools": {
-                "core": [
-                  "run_shell_command(echo)"
-                ]
               }
             }
           prompt: '/custom-gemini-triage'
+
+      - name: 'Extract labels from response'
+        if: |-
+          ${{ steps.get_labels.outputs.available_labels != '' }}
+        run: |
+          # Use grep to find the line and cut to get the value
+          # We search in the output of the gemini_analysis step
+          LABELS=$(echo "${{ steps.gemini_analysis.outputs.gemini_response }}" | grep "SELECTED_LABELS=" | head -n 1 | cut -d'=' -f2 | tr -d '\r')
+          
+          if [ "$LABELS" = "none" ] || [ -z "$LABELS" ]; then
+            echo "SELECTED_LABELS=" >> $GITHUB_ENV
+            echo "No labels identified."
+          else
+            echo "SELECTED_LABELS=$LABELS" >> $GITHUB_ENV
+            echo "Identified labels: $LABELS"
+          fi
 
   label:
     runs-on: 'ubuntu-latest'

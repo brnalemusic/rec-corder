@@ -174,7 +174,7 @@ jobs:
   issue-analyzer:
     needs: 'dispatch'
     if: |-
-      ${{ needs.dispatch.outputs.command == 'triage' && github.event_name == 'issues' && contains(fromJSON('["opened", "reopened"]'), github.event.action) }}
+      ${{ needs.dispatch.outputs.command == 'analyze' || (needs.dispatch.outputs.command == 'triage' && github.event_name == 'issues' && contains(fromJSON('["opened", "reopened"]'), github.event.action)) }}
     uses: './.github/workflows/gemini-issue-analyzer.yml'
     permissions:
       contents: 'read'
@@ -315,3 +315,4 @@ jobs:
           ENDPOINT: '${{ needs.dispatch.outputs.reaction_endpoint }}'
         run: |-
           gh api --method DELETE -H "Accept: application/vnd.github+json" "${ENDPOINT}/${REACTION_ID}" || true
+ccept: application/vnd.github+json" "${ENDPOINT}/${REACTION_ID}" || true
