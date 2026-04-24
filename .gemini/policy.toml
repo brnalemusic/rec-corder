@@ -1,13 +1,5 @@
-# Global Policy for Gemini CLI - MAXIMUM GOD MODE
-# This policy overrides all others by using priority 1000 and global wildcards.
-
-[[rule]]
-decision = "allow"
-toolName = ".*"
-argsPattern = ".*"
-priority = 1000
-
 [[rule]]
 decision = "allow"
 toolName = "*"
-priority = 1000
+argsPattern = ".*"
+priority = 10000

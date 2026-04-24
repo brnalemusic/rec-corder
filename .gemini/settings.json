@@ -1,11 +1,14 @@
 {
   "model": {
-    "maxSessionTurns": -1
+    "maxSessionTurns": 500
   },
   "tools": {
     "core": [
       "run_shell_command(*)"
     ]
+  },
+  "policy": {
+    "file": "./policy.toml"
   },
   "mcpServers": {
     "github": {
