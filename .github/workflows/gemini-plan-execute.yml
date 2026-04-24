@@ -18,7 +18,7 @@ defaults:
 
 jobs:
   plan-execute:
-    timeout-minutes: 60
+    timeout-minutes: 30
     runs-on: 'ubuntu-latest'
     permissions:
       contents: 'write'
@@ -42,11 +42,6 @@ jobs:
       - name: 'Checkout Code'
         uses: 'actions/checkout@v4' # ratchet:exclude
 
-      - name: 'Install Custom Prompts'
-        run: |
-          mkdir -p .gemini/commands
-          cp .github/commands/gemini-plan-execute.toml .gemini/commands/custom-gemini-plan-execute.toml
-
       - name: 'Run Gemini CLI'
         id: 'run_gemini'
         uses: 'google-github-actions/run-gemini-cli@main' # ratchet:exclude
@@ -59,7 +54,6 @@ jobs:
           ISSUE_NUMBER: '${{ github.event.pull_request.number || github.event.issue.number }}'
           REPOSITORY: '${{ github.repository }}'
           ADDITIONAL_CONTEXT: '${{ inputs.additional_context }}'
-          GEMINI_CLI_TRUST_WORKSPACE: true
         with:
           gcp_location: '${{ vars.GOOGLE_CLOUD_LOCATION }}'
           gcp_project_id: '${{ vars.GOOGLE_CLOUD_PROJECT }}'
@@ -77,9 +71,8 @@ jobs:
           settings: |-
             {
               "model": {
-                "maxSessionTurns": -1
+                "maxSessionTurns": 25
               },
-              "system_instruction": "You are a world-class autonomous AI software engineering agent. Your core instructions are in the /custom-gemini-plan-execute command. You MUST verify the existence of an approved plan before taking any action.",
               "telemetry": {
                 "enabled": true,
                 "target": "local",
@@ -130,4 +123,4 @@ jobs:
                 ]
               }
             }
-          prompt: '/custom-gemini-plan-execute'
+          prompt: '/gemini-plan-execute'

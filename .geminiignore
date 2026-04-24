@@ -1,0 +1,4 @@
+.gemini-test/
+.openclaude/
+.openclaude*
+verified_releases.md

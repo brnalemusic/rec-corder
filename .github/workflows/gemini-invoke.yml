@@ -40,11 +40,6 @@ jobs:
       - name: 'Checkout Code'
         uses: 'actions/checkout@v4' # ratchet:exclude
 
-      - name: 'Install Custom Prompts'
-        run: |
-          mkdir -p .gemini/commands
-          cp .github/commands/gemini-invoke.toml .gemini/commands/custom-gemini-invoke.toml
-
       - name: 'Run Gemini CLI'
         id: 'run_gemini'
         uses: 'google-github-actions/run-gemini-cli@main' # ratchet:exclude
@@ -74,9 +69,8 @@ jobs:
           settings: |-
             {
               "model": {
-                "maxSessionTurns": -1
+                "maxSessionTurns": 25
               },
-              "system_instruction": "You are a world-class autonomous AI software engineering agent. Your core instructions are in the /custom-gemini-invoke command. You MUST follow them strictly and post a plan for approval as described.",
               "telemetry": {
                 "enabled": true,
                 "target": "local",
@@ -115,11 +109,10 @@ jobs:
                 "core": [
                   "run_shell_command(cat)",
                   "run_shell_command(echo)",
-                  "run_shell_command(gh)",
                   "run_shell_command(grep)",
                   "run_shell_command(head)",
                   "run_shell_command(tail)"
                 ]
               }
             }
-          prompt: '/custom-gemini-invoke'
+          prompt: '/gemini-invoke'

@@ -13,7 +13,7 @@ defaults:
 
 jobs:
   create-pr:
-    timeout-minutes: 60
+    timeout-minutes: 30
     runs-on: 'ubuntu-latest'
     permissions:
       contents: 'write' # Enable reading and modifying code
@@ -38,11 +38,6 @@ jobs:
       - name: 'Checkout repository'
         uses: 'actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8' # ratchet:actions/checkout@v6
 
-      - name: 'Install Custom Prompts'
-        run: |
-          mkdir -p .gemini/commands
-          cp .github/commands/gemini-issue-fixer.toml .gemini/commands/custom-gemini-issue-fixer.toml
-
       - name: 'Run Gemini PR Create'
         uses: 'google-github-actions/run-gemini-cli@main' # ratchet:exclude
         id: 'gemini_pr_create'
@@ -55,7 +50,6 @@ jobs:
           BRANCH_NAME: 'gemini-fix-${{ github.event.issue.number }}'
           EVENT_NAME: '${{ github.event_name }}'
           TRIGGERING_ACTOR: '${{ github.triggering_actor }}'
-          GEMINI_CLI_TRUST_WORKSPACE: true
         with:
           gcp_location: '${{ vars.GOOGLE_CLOUD_LOCATION }}'
           gcp_project_id: '${{ vars.GOOGLE_CLOUD_PROJECT }}'
@@ -73,9 +67,8 @@ jobs:
             {
               "debug": ${{ fromJSON(vars.GEMINI_DEBUG || vars.ACTIONS_STEP_DEBUG || false) }},
               "model": {
-                "maxSessionTurns": -1
+                "maxSessionTurns": 200
               },
-              "system_instruction": "You are an expert software engineer tasked with fixing issues. Your core instructions are in the /custom-gemini-issue-fixer command. You MUST follow them strictly, including maintaining the checklist in the issue comments.",
               "mcpServers": {
                 "github": {
                   "command": "docker",
@@ -98,4 +91,4 @@ jobs:
                 "outfile": ".gemini/telemetry.log"
               }
             }
-          prompt: '/custom-gemini-issue-fixer'
+          prompt: '/gemini-issue-fixer'
