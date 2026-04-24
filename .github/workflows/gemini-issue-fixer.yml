@@ -13,7 +13,7 @@ defaults:
 
 jobs:
   create-pr:
-    timeout-minutes: 30
+    timeout-minutes: 80 # Adicionei mais tempo pra ele não bater de cara em um cancelamento
     runs-on: 'ubuntu-latest'
     permissions:
       contents: 'write' # Enable reading and modifying code

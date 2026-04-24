@@ -18,6 +18,7 @@ defaults:
 
 jobs:
   invoke:
+    timeout-minutes: 20
     runs-on: 'ubuntu-latest'
     permissions:
       contents: 'read'
