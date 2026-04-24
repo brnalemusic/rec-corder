@@ -65,6 +65,7 @@ pub struct AudioTrack {
     pub sample_format: AudioSampleFormat,
     pub sample_rate: u32,
     pub channels: u16,
+    pub start_qpc: Option<u64>,
 }
 
 pub struct NativeAudioCapture {
@@ -407,16 +408,19 @@ mod platform {
             let capture_client: IAudioCaptureClient = audio_client.GetService().map_err(map_win_err)?;
             let mut file = File::create(&output_path)?;
 
-            let descriptor = AudioTrack {
+            let mut descriptor = AudioTrack {
                 path: output_path.clone(),
                 sample_format: sample_format.clone(),
                 sample_rate,
                 channels,
+                start_qpc: None,
             };
 
             let _ = init_tx.send(Ok(descriptor.clone()));
 
             audio_client.Start().map_err(map_win_err)?;
+
+            let mut qpc_captured = false;
 
             loop {
                 let mut packet_size = capture_client.GetNextPacketSize().map_err(map_win_err)?;
@@ -425,6 +429,7 @@ mod platform {
                     let mut data_ptr = std::ptr::null_mut();
                     let mut frame_count = 0u32;
                     let mut flags = 0u32;
+                    let mut qpc_position = 0u64;
 
                     capture_client
                         .GetBuffer(
@@ -432,9 +437,14 @@ mod platform {
                             &mut frame_count,
                             &mut flags,
                             None,
-                            None,
+                            Some(&mut qpc_position),
                         )
                         .map_err(map_win_err)?;
+
+                    if !qpc_captured {
+                        descriptor.start_qpc = Some(qpc_position);
+                        qpc_captured = true;
+                    }
 
                     let bytes_to_write = frame_count as usize * block_align;
 
@@ -568,6 +578,7 @@ mod platform {
             sample_format: AudioSampleFormat::I16,
             sample_rate: 48000,
             channels: 2,
+            start_qpc: None,
         };
 
         let _ = init_tx.send(Ok(track.clone()));

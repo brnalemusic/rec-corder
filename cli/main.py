@@ -196,7 +196,7 @@ class AppMenu:
             # Fallback manual caso a lib falhe ou não esteja instalada
             print(f"{RED}{BOLD}    REC CORDER CLI{RESET}")
 
-        print(f"    {RED}🔴 {BOLD}{WHITE}Ultra-light Screen Recorder — v1.0.0-beta.4{RESET}\n")
+        print(f"    {RED}🔴 {BOLD}{WHITE}Ultra-light Screen Recorder — v0.1.0-clibeta.1{RESET}\n")
 
     def test_environment(self):
         print(f"{BOLD}=== Status do Sistema ==={RESET}")

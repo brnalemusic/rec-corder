@@ -229,7 +229,7 @@ pub fn append_common_inputs(
     let video_input = build_video_input(monitor_handle, monitor_index, window_handle, fps);
     
     #[cfg(target_os = "windows")]
-    cmd.args(["-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", &video_input]);
+    cmd.args(["-hide_banner", "-loglevel", "info", "-thread_queue_size", "1024", "-f", "lavfi", "-i", &video_input]);
 
     #[cfg(not(target_os = "windows"))]
     {
@@ -250,7 +250,8 @@ pub fn append_common_inputs(
         
         // Exemplo: "-video_size 1920x1080 -framerate 30 -i :0.0+0,0"
         cmd.args([
-            "-hide_banner", "-loglevel", "error", 
+            "-hide_banner", "-loglevel", "info", 
+            "-thread_queue_size", "1024",
             "-f", "x11grab", 
             "-video_size", &video_size,
             "-framerate", &fps.to_string(), 
@@ -263,11 +264,13 @@ pub fn build_capture_filter(scale_factor: u32, fps: u32, pixel_format: &str) -> 
     #[cfg(target_os = "windows")]
     {
         if scale_factor >= 100 {
-            format!("hwdownload,format=bgra,fps={fps},format={pixel_format}")
+            // [OTIMIZAÇÃO v5] Convertemos para o formato leve (ex: NV12) IMEDIATAMENTE após o download.
+            // Isso torna o filtro 'fps' e o 'overlay' muito mais rápidos.
+            format!("hwdownload,format=bgra,format={pixel_format},fps={fps}")
         } else {
             let f = scale_factor as f32 / 100.0;
             format!(
-                "hwdownload,format=bgra,fps={fps},scale=trunc(iw*{f}/2)*2:trunc(ih*{f}/2)*2,format={pixel_format}"
+                "hwdownload,format=bgra,format={pixel_format},fps={fps},scale=trunc(iw*{f}/2)*2:trunc(ih*{f}/2)*2"
             )
         }
     }
@@ -311,6 +314,8 @@ pub fn append_encoder_args(
                 "5M",
                 "-pix_fmt",
                 "nv12",
+                "-preanalysis", "0",
+                "-header_spacing", "0",
             ]);
         }
         EncoderStrategy::NvidiaNvenc => {
@@ -367,13 +372,13 @@ pub fn append_encoder_args(
 }
 
 /// Add a DirectShow webcam as the second video input to the FFmpeg command.
-pub fn append_webcam_input(cmd: &mut Command, device_name: &str) {
+pub fn append_webcam_input(cmd: &mut Command, device_name: &str, _fps: u32) {
     #[cfg(target_os = "windows")]
     {
         cmd.args([
+            "-thread_queue_size", "1024",
             "-f", "dshow",
             "-video_size", "640x480",
-            "-framerate", "30",
             "-i",
         ]);
         cmd.arg(format!("video={}", device_name));
@@ -381,9 +386,9 @@ pub fn append_webcam_input(cmd: &mut Command, device_name: &str) {
     #[cfg(not(target_os = "windows"))]
     {
         cmd.args([
+            "-thread_queue_size", "1024",
             "-f", "v4l2",
             "-video_size", "640x480",
-            "-framerate", "30",
             "-i",
         ]);
         cmd.arg(device_name);
@@ -401,6 +406,8 @@ pub fn build_webcam_overlay_filter(
     base_vf: &str,
     position: &str,
     size_percent: u32,
+    pixel_format: &str,
+    fps: u32,
 ) -> String {
     let overlay_width = 200 * size_percent / 100;
     let overlay_height = overlay_width * 3 / 4; // 4:3 aspect ratio
@@ -413,8 +420,12 @@ pub fn build_webcam_overlay_filter(
         _              => format!("W-{overlay_width}:H-{overlay_height}"), // default: bottom-right
     };
 
+    // [PERFORMANCE v5.1] 
+    // 1. Convertemos a webcam para o formato de pixel do monitor.
+    // 2. Usamos o filtro 'fps' para casar o framerate da webcam com o do monitor via software (muito leve em 640x480).
+    // 3. Isso impede que o 'overlay' trave o fluxo principal do monitor.
     format!(
-        "[0:v]{base_vf}[vid];[1:v]scale={overlay_width}:{overlay_height}[cam];[vid][cam]overlay={position_expr}[out]"
+        "[0:v]{base_vf}[vid];[1:v]format={pixel_format},fps={fps},scale={overlay_width}:{overlay_height}[cam];[vid][cam]overlay={position_expr}:shortest=1:repeatlast=0[out]"
     )
 }
 
