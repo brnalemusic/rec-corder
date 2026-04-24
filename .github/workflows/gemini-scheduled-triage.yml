@@ -132,22 +132,37 @@ jobs:
                 "enabled": true,
                 "target": "local",
                 "outfile": ".gemini/telemetry.log"
+              },
+              "tools": {
+                "core": [
+                  "run_shell_command(echo)"
+                ]
               }
             }
           prompt: '/custom-gemini-scheduled-triage'
 
       - name: 'Extract triage results from response'
+        id: 'extract_results'
         if: |-
           ${{ steps.find_issues.outputs.issues_to_triage != '[]' }}
+        env:
+          GEMINI_RESPONSE: '${{ steps.gemini_issue_analysis.outputs.gemini_response }}'
         run: |
           # Use grep and cut to extract the TRIAGED_ISSUES line
-          RESULTS=$(echo "${{ steps.gemini_issue_analysis.outputs.gemini_response }}" | grep "TRIAGED_ISSUES=" | head -n 1 | cut -d'=' -f2- | tr -d '\r')
+          # If GEMINI_RESPONSE is JSON (because we used output-format: json), parse it.
+          if echo "$GEMINI_RESPONSE" | jq -e . >/dev/null 2>&1; then
+            RESPONSE_TEXT=$(echo "$GEMINI_RESPONSE" | jq -r '.response // ""')
+          else
+            RESPONSE_TEXT="$GEMINI_RESPONSE"
+          fi
+          
+          RESULTS=$(echo "$RESPONSE_TEXT" | grep "TRIAGED_ISSUES=" | head -n 1 | cut -d'=' -f2- | tr -d '\r')
           
           if [ -z "$RESULTS" ] || [ "$RESULTS" = "[]" ]; then
-            echo "TRIAGED_ISSUES=[]" >> $GITHUB_ENV
+            echo "triaged_issues=[]" >> $GITHUB_OUTPUT
             echo "No issues triaged."
           else
-            echo "TRIAGED_ISSUES=$RESULTS" >> $GITHUB_ENV
+            echo "triaged_issues=$RESULTS" >> $GITHUB_OUTPUT
             echo "Triaged issues found."
           fi
 

@@ -1,0 +1,61 @@
+# Policy for Gemini CLI
+
+[[rule]]
+decision = "allow"
+toolName = "run_shell_command"
+argsPattern = "^echo .*"
+priority = 10
+
+[[rule]]
+decision = "allow"
+toolName = "run_shell_command"
+argsPattern = "^gh .*"
+priority = 10
+
+[[rule]]
+decision = "allow"
+toolName = "run_shell_command"
+argsPattern = "^git .*"
+priority = 10
+
+[[rule]]
+decision = "allow"
+toolName = "run_shell_command"
+argsPattern = "^npm .*"
+priority = 10
+
+[[rule]]
+decision = "allow"
+toolName = "run_shell_command"
+argsPattern = "^ls .*"
+priority = 10
+
+[[rule]]
+decision = "allow"
+toolName = "run_shell_command"
+argsPattern = "^cat .*"
+priority = 10
+
+[[rule]]
+decision = "allow"
+toolName = "run_shell_command"
+argsPattern = "^grep .*"
+priority = 10
+
+[[rule]]
+decision = "allow"
+toolName = "run_shell_command"
+argsPattern = "^mkdir .*"
+priority = 10
+
+[[rule]]
+decision = "allow"
+toolName = "run_shell_command"
+argsPattern = "^rm .*"
+priority = 10
+
+[[rule]]
+decision = "allow"
+toolName = "mcp_github_.*"
+priority = 10
+

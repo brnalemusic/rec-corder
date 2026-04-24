@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 8
     outputs:
       available_labels: '${{ steps.get_labels.outputs.available_labels }}'
-      selected_labels: '${{ env.SELECTED_LABELS }}'
+      selected_labels: '${{ steps.extract_labels.outputs.selected_labels }}'
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -102,25 +102,41 @@ jobs:
                 "enabled": true,
                 "target": "local",
                 "outfile": ".gemini/telemetry.log"
+              },
+              "tools": {
+                "core": [
+                  "run_shell_command(echo)"
+                ]
               }
             }
           prompt: '/custom-gemini-triage'
 
       - name: 'Extract labels from response'
+        id: 'extract_labels'
         if: |-
           ${{ steps.get_labels.outputs.available_labels != '' }}
+        env:
+          GEMINI_RESPONSE: '${{ steps.gemini_analysis.outputs.gemini_response }}'
         run: |
           # Use grep to find the line and cut to get the value
           # We search in the output of the gemini_analysis step
-          LABELS=$(echo "${{ steps.gemini_analysis.outputs.gemini_response }}" | grep "SELECTED_LABELS=" | head -n 1 | cut -d'=' -f2 | tr -d '\r')
+          # If GEMINI_RESPONSE is JSON (because we used output-format: json), parse it.
+          if echo "$GEMINI_RESPONSE" | jq -e . >/dev/null 2>&1; then
+            RESPONSE_TEXT=$(echo "$GEMINI_RESPONSE" | jq -r '.response // ""')
+          else
+            RESPONSE_TEXT="$GEMINI_RESPONSE"
+          fi
+          
+          LABELS=$(echo "$RESPONSE_TEXT" | grep "SELECTED_LABELS=" | head -n 1 | cut -d'=' -f2 | tr -d '\r')
           
           if [ "$LABELS" = "none" ] || [ -z "$LABELS" ]; then
-            echo "SELECTED_LABELS=" >> $GITHUB_ENV
+            echo "selected_labels=" >> $GITHUB_OUTPUT
             echo "No labels identified."
           else
-            echo "SELECTED_LABELS=$LABELS" >> $GITHUB_ENV
+            echo "selected_labels=$LABELS" >> $GITHUB_OUTPUT
             echo "Identified labels: $LABELS"
           fi
+
 
   label:
     runs-on: 'ubuntu-latest'

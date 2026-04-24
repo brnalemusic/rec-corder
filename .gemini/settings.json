@@ -1,0 +1,21 @@
+{
+  "model": {
+    "maxSessionTurns": -1
+  },
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "includeTools": [
+        "add_issue_comment",
+        "add_comment_to_pending_review",
+        "pull_request_read",
+        "pull_request_review_write",
+        "get_commit"
+      ]
+    }
+  }
+}
