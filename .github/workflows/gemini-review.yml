@@ -53,6 +53,7 @@ jobs:
           ADDITIONAL_CONTEXT: '${{ inputs.additional_context }}'
           GEMINI_API_KEY: '${{ secrets.GEMINI_API_KEY }}'
           GEMINI_CLI_TRUST_WORKSPACE: true
+          GEMINI_CLI_POLICY_FILE: './policy.toml'
         with:
           gcp_location: '${{ vars.GOOGLE_CLOUD_LOCATION }}'
           gcp_project_id: '${{ vars.GOOGLE_CLOUD_PROJECT }}'

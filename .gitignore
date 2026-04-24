@@ -85,7 +85,6 @@ model.py
 .openclaude-profile.json
 .openclaude
 ISSUE.md
-!.gemini/
 verified_releases.md
 
 # --- Python & CLI ---
