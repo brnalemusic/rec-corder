@@ -86,6 +86,7 @@ model.py
 .openclaude
 ISSUE.md
 .gemini/
+verified_releases.md
 
 # --- Python & CLI ---
 __pycache__/
