@@ -36,7 +36,7 @@ jobs:
       pull-requests: 'read'
     outputs:
       available_labels: '${{ steps.get_labels.outputs.available_labels }}'
-      triaged_issues: '${{ env.TRIAGED_ISSUES }}'
+      triaged_issues: '${{ steps.extract_results.outputs.triaged_issues }}'
     steps:
       - name: 'Get repository labels'
         id: 'get_labels'
@@ -146,7 +146,7 @@ jobs:
         if: |-
           ${{ steps.find_issues.outputs.issues_to_triage != '[]' }}
         env:
-          GEMINI_RESPONSE: '${{ steps.gemini_issue_analysis.outputs.gemini_response }}'
+          GEMINI_RESPONSE: '${{ steps.gemini_issue_analysis.outputs.summary }}'
         run: |
           # Use grep and cut to extract the TRIAGED_ISSUES line
           # If GEMINI_RESPONSE is JSON (because we used output-format: json), parse it.

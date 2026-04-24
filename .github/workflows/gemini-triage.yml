@@ -116,7 +116,7 @@ jobs:
         if: |-
           ${{ steps.get_labels.outputs.available_labels != '' }}
         env:
-          GEMINI_RESPONSE: '${{ steps.gemini_analysis.outputs.gemini_response }}'
+          GEMINI_RESPONSE: '${{ steps.gemini_analysis.outputs.summary }}'
         run: |
           # Use grep to find the line and cut to get the value
           # We search in the output of the gemini_analysis step
