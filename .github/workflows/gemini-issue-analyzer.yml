@@ -14,7 +14,7 @@ defaults:
 jobs:
   analyze:
     runs-on: 'ubuntu-latest'
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -48,6 +48,7 @@ jobs:
           ISSUE_TITLE: '${{ github.event.issue.title }}'
           ISSUE_BODY: '${{ github.event.issue.body }}'
           REPOSITORY: '${{ github.repository }}'
+          GEMINI_CLI_TRUST_WORKSPACE: true
         with:
           gcp_location: '${{ vars.GOOGLE_CLOUD_LOCATION }}'
           gcp_project_id: '${{ vars.GOOGLE_CLOUD_PROJECT }}'
