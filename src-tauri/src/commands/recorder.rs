@@ -277,13 +277,10 @@ pub fn start_recording(
     }
 
     // Sincronização e verificação de corridas (Race Condition guard)
-    let is_currently_recording = state.recording();
-    {
-        let handle_guard = session_handle.lock();
-        if is_currently_recording || handle_guard.is_some() {
-            println!("Erro: ja existe uma gravacao em andamento no contexto do app ou API");
-            return Err("Ja existe uma gravacao em andamento".into());
-        }
+    let mut handle_guard = session_handle.lock();
+    if state.recording() || handle_guard.is_some() {
+        println!("Erro: ja existe uma gravacao em andamento no contexto do app ou API");
+        return Err("Ja existe uma gravacao em andamento".into());
     }
 
     // Duplicar os valores e dropar o Lock de ConfigURAÇÕES imediatamente
@@ -343,8 +340,7 @@ pub fn start_recording(
     *state.current_file.lock() = Some(file_path.clone());
     *state.crash_marker.lock() = Some(marker);
 
-    let mut guard = session_handle.lock();
-    *guard = Some(ActiveSession { session, stop_flag });
+    *handle_guard = Some(ActiveSession { session, stop_flag });
 
     Ok(StartResult {
         file_path: file_path.to_string_lossy().into_owned(),
